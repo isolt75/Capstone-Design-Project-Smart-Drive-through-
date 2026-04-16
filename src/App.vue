@@ -4,26 +4,26 @@
 <style>
 :root {
   --primary-color: #ff9f43;
-  --bg-color: #f8f9fa;
-  --card-bg: #ffffff;
-  --text-main: #2d3436;
+  --bg-base: #fff;
+  --bg-list: #eee;
+  --bg-shadow: #0000001a;
+  --text-primary: #000;
 }
 
 body {
-  background-color: var(--bg-color);
-  font-family: 'Pretendard', sans-serif;
   margin: 0;
+  background-color: var(--bg-base);
+  font-family: Pretendard, sans-serif;
   user-select: none;
 }
 
 button {
-  cursor: pointer;
   border: none;
-  border-radius: 12px;
+  cursor: pointer;
   transition: transform 0.1s active;
 }
 
 button:active {
-  transform: scale(0.95);
+  transform: scale(0.97);
 }
 </style>

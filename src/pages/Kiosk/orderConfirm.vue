@@ -24,44 +24,35 @@ onMounted(() => {
     </div>
 
     <div class="btn-group">
-      <button class="recmd" @click="$router.push('/recmd')">주문 화면</button>
-      <button class="final" @click="$router.push('/final')">주문 완료</button>
+      <button class="recmd" @click="router.push('/recmd')">주문 화면</button>
+      <button class="final" @click="router.push('/final')">주문 완료</button>
     </div>
   </div>
 </template>
 
-<style scoped>
+<style>
 .confirm-menu {
-  max-width: 600px;
-  margin: 0 auto;
-  padding: 40px 20px;
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  min-height: 90vh;
+  padding: 20px;
 }
 
-h1 {
-  text-align: center;
+.confirm-menu h1 {
+  margin-bottom: 30px;
+  color: var(--text-primary);
   font-size: 2rem;
-  margin-bottom: 30px;
-  color: #2d3436;
-}
-
-.order-list {
-  background: #ffffff;
-  border-radius: 15px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-  padding: 10px;
-  margin-bottom: 30px;
+  text-align: center;
 }
 
 .total {
-  background: #2d3436;
-  color: #ffffff;
+  margin: 20px 0;
   padding: 20px;
   border-radius: 12px;
+
+  background: #363636;
+  color: var(--bg-base);
   text-align: right;
-  margin-bottom: 40px;
 }
 
 .total h3 {
@@ -71,31 +62,26 @@ h1 {
 
 .btn-group {
   display: flex;
-  gap: 15px;
   margin-top: auto;
+  gap: 15px;
 }
 
-button {
+.btn-group button {
   flex: 1;
   padding: 20px;
-  font-size: 1.1rem;
-  font-weight: bold;
-  border-radius: 12px;
   border: none;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
+  border-radius: 12px;
 
-/* 이전으로 돌아가기 버튼 */
-button:nth-of-type(1) {
-  background: #dcdde1;
-  color: #2d3436;
-}
-
-/* 주문 완료 버튼 */
-button:nth-of-type(2) {
-  background: #ff9f43;
-  color: white;
   font-size: 1.3rem;
+  font-weight: bold;
+}
+
+.recmd {
+  background: #dcdde1;
+}
+
+.final {
+  background: var(--primary-color);
+  color: var(--bg-base);
 }
 </style>

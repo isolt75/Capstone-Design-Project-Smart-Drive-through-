@@ -19,18 +19,20 @@ const fPrice = (p: number) => p.toLocaleString('ko-KR');
         </tr>
       </thead>
       <tbody>
-        <tr v-for="item in orderCart" :key="item.id">
+        <tr v-for="item in orderCart" :key="item.id" class="qty">
           <td class="item-name">{{ item.name }}</td>
           <td class="item-count">
             <div class="qty-control">
-              <button @click="store.decreaseItem(item.id)">-</button>
-              <span class="count">{{ item.count }}</span>
+              <button @click="store.decreaseItem(item.id)">&minus;</button>
+              <span>{{ item.count }}</span>
               <button @click="store.increaseItem(item.id)">+</button>
             </div>
           </td>
           <td class="item-total">
             {{ fPrice(item.itemTotal) }}
-            <button @click="store.removeItem(item.id)">x</button>
+            <button class="del" @click="store.removeItem(item.id)">
+              &times;
+            </button>
           </td>
         </tr>
         <tr v-if="orderCart.length === 0">
@@ -43,57 +45,78 @@ const fPrice = (p: number) => p.toLocaleString('ko-KR');
 
 <style>
 .order-list {
-  border-radius: 10px;
+  margin-bottom: 10px;
+  padding: 5px 10px;
+
+  border-radius: 12px;
+  background: var(--bg-base);
+  box-shadow: 0 4px 15px var(--bg-shadow);
+
+  font-size: 1.2rem;
 }
 
 .order-table {
   width: 100%;
-  border-collapse: collapse;
   margin-top: 10px;
-  background: white;
+
+  border-collapse: collapse;
   border-radius: 10px;
   overflow: hidden;
 }
 
 .order-table th {
   width: 33.3%;
-  background: #2f3640;
-  color: white;
   padding: 10px;
+  background: #323640;
+  color: var(--bg-base);
 }
 
 .order-table td {
   padding: 15px 10px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--bg-list);
   text-align: center;
+}
+
+.qty button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 25px;
+  height: 25px;
+  border-radius: 5px;
+
+  font-size: 1.4rem;
+  line-height: 1;
 }
 
 .qty-control {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 20px;
 }
 
 .qty-control button {
-  width: 30px;
-  height: 30px;
-  background: #eee;
+  background: var(--bg-list);
 }
 
-.item-total button {
-  margin-left: 10px;
-  background: #ff7675;
-  color: white;
-  border-radius: 50%;
-  width: 25px;
-  height: 25px;
+.item-total {
+  position: relative;
+}
+
+.del {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+
+  background: #ff7575;
+  color: var(--bg-base);
+  transform: translateY(-50%);
 }
 
 .empty {
-  display: table-cell;
   height: 30px;
   vertical-align: middle;
-  background-color: #ffffff;
 }
 </style>

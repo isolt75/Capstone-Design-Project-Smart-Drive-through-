@@ -12,93 +12,135 @@ function addMenu(menu: menuItem) {
   store.addItem(menu);
 }
 
+const recommendMenus = [
+  { id: 1, name: '아메리카노', price: 3000, image: '/images/americano.png' },
+  { id: 6, name: '카페라떼', price: 4000, image: '/images/cafeLatte.png' },
+  {
+    id: 9,
+    name: '딸기요거트스무디',
+    price: 4500,
+    image: '/images/strawberryYogurt.png',
+  },
+  { id: 8, name: '밀크쉐이크', price: 4000, image: '/images/milkShake.png' },
+  { id: 11, name: '레몬에이드', price: 3500, image: '/images/lemodade.png' },
+  { id: 16, name: '아이스티', price: 2000, image: '/images/icetea.png' },
+];
+
 const menuCategories = [
+  { name: '추천', items: recommendMenus },
   {
     name: '커피',
     items: [
-      { id: 1, name: '아메리카노', price: 3000 },
-      { id: 2, name: '콜드브루', price: 4500 },
-      { id: 3, name: '카라멜 마키아또', price: 4000 },
-      { id: 4, name: '카푸치노', price: 4000 },
-      { id: 5, name: '카페모카', price: 4000 },
-      { id: 6, name: '카페라떼', price: 4000 },
+      {
+        id: 1,
+        name: '아메리카노',
+        price: 3000,
+        image: '/images/americano.png',
+      },
+      { id: 2, name: '콜드브루', price: 4500, image: '/images/coldBrew.png' },
+      {
+        id: 3,
+        name: '카라멜 마키아또',
+        price: 4000,
+        image: '/images/caramelMacchiato.png',
+      },
+      {
+        id: 4,
+        name: '카푸치노',
+        price: 4000,
+        image: '/images/cappucchino.png',
+      },
+      { id: 5, name: '카페모카', price: 4000, image: '/images/cafeMocha.png' },
+      { id: 6, name: '카페라떼', price: 4000, image: '/images/cafeLatte.png' },
     ],
   },
   {
     name: '아이스 블렌디드',
     items: [
-      { id: 7, name: '자바칩 프라페', price: 4000 },
-      { id: 8, name: '밀크쉐이크', price: 4000 },
-      { id: 9, name: '딸기요거트스무디', price: 4500 },
-      { id: 10, name: '망고요거트스무디', price: 4500 },
+      {
+        id: 7,
+        name: '자바칩 프라페',
+        price: 4000,
+        image: '/images/javaChip.png',
+      },
+      {
+        id: 8,
+        name: '밀크쉐이크',
+        price: 4000,
+        image: '/images/milkShake.png',
+      },
+      {
+        id: 9,
+        name: '딸기요거트스무디',
+        price: 4500,
+        image: '/images/strawberryYogurt.png',
+      },
+      {
+        id: 10,
+        name: '망고요거트스무디',
+        price: 4500,
+        image: '/images/mangoYogurt.png',
+      },
     ],
   },
   {
     name: '에이드, 주스',
     items: [
-      { id: 11, name: '레몬에이드', price: 3500 },
-      { id: 12, name: '오렌지주스', price: 3000 },
-      { id: 13, name: '라임모히또에이드', price: 3500 },
+      {
+        id: 11,
+        name: '레몬에이드',
+        price: 3500,
+        image: '/images/lemodade.png',
+      },
+      {
+        id: 12,
+        name: '오렌지주스',
+        price: 3000,
+        image: '/images/orangeJuice.png',
+      },
+      {
+        id: 13,
+        name: '라임모히또에이드',
+        price: 3500,
+        image: '/images/limeMohito.png',
+      },
     ],
   },
   {
     name: '티',
     items: [
-      { id: 14, name: '녹차', price: 2500 },
-      { id: 15, name: '자몽허니블랙티', price: 4000 },
-      { id: 16, name: '아이스티', price: 2000 },
-      { id: 17, name: '말차라떼', price: 3500 },
-      { id: 18, name: '초코라떼', price: 3000 },
-      { id: 19, name: '우유', price: 2000 },
+      { id: 14, name: '녹차', price: 2500, image: '/images/greentea.png' },
+      {
+        id: 15,
+        name: '자몽허니블랙티',
+        price: 4000,
+        image: '/images/grapefruitBlacktea.png',
+      },
+      { id: 16, name: '아이스티', price: 2000, image: '/images/icetea.png' },
+      { id: 17, name: '말차라떼', price: 3500, image: '/images/matcha.png' },
+      { id: 18, name: '초코라떼', price: 3000, image: '/images/choco.png' },
+      { id: 19, name: '우유', price: 2000, image: '/images/milk.png' },
     ],
   },
-];
-
-const recommendMenus = [
-  { id: 1, name: '아메리카노', price: 3000 },
-  { id: 6, name: '카페라떼', price: 4000 },
-  { id: 9, name: '딸기요거트스무디', price: 4500 },
-  { id: 8, name: '밀크쉐이크', price: 4000 },
-  { id: 11, name: '레몬에이드', price: 3500 },
-  { id: 16, name: '아이스티', price: 2000 },
 ];
 </script>
 
 <template>
   <div class="menu-page">
-    <h1>반갑습니다, {{ store.carPart }}님!</h1>
+    <h1>환영합니다, {{ store.carPart }}님!</h1>
     <nav class="category-tabs">
       <button
-        v-for="cat in ['추천', ...menuCategories.map((c) => c.name)]"
-        :key="cat"
-        :class="{ active: activeTab === cat }"
-        @click="activeTab = cat"
+        v-for="cat in menuCategories"
+        :key="cat.name"
+        :class="{ active: activeTab === cat.name }"
+        @click="activeTab = cat.name"
       >
-        {{ cat }}
+        {{ cat.name }}
       </button>
     </nav>
-
-    <hr />
     <main class="menu-content">
-      <section v-if="activeTab === '추천'" class="recommend">
-        <div class="rec-menu">
-          <h2>추천 메뉴</h2>
-          <div class="menu-grid">
-            <button
-              v-for="m in recommendMenus"
-              :key="'rec=' + m.id"
-              class="rec-btn"
-              @click="addMenu(m)"
-            >
-              {{ m.name }}<br />{{ fPrice(m.price) }}원
-            </button>
-          </div>
-        </div>
-      </section>
-
       <section v-for="category in menuCategories" :key="category.name">
         <div v-if="activeTab === category.name" class="category">
-          <h2>{{ category.name }}</h2>
           <div class="menu-grid">
             <button
               v-for="item in category.items"
@@ -106,120 +148,154 @@ const recommendMenus = [
               class="menu-btn"
               @click="addMenu(item)"
             >
-              {{ item.name }}<br />{{ fPrice(item.price) }}원
+              <img :src="item.image" :alt="item.name" class="menu-img" />
+              <div class="menu-info">
+                <span class="menu-name">{{ item.name }}</span
+                ><br />
+                <span class="menu-price">{{ fPrice(item.price) }}원</span>
+              </div>
             </button>
           </div>
         </div>
       </section>
     </main>
 
-    <hr />
-
     <div class="order-summary">
-      <div class="sum-list">
-        <h2>주문 내역</h2>
-        <span class="total-price">합계: {{ fPrice(totalPrice) }}원</span>
-        <orderCart />
-      </div>
+      <h2>주문 내역</h2>
+      <span class="total-price">합계: {{ fPrice(totalPrice) }}원</span>
+      <orderCart />
     </div>
 
-    <hr />
-
     <div class="action-btn">
-      <div class="voice">
-        <button @click="$router.push('/voice')">음성 주문</button>
-      </div>
-      <div class="next">
-        <button @click="$router.push('/confirm')">주문 완료</button>
-      </div>
+      <button class="voice" @click="$router.push('/voice')">음성 주문</button>
+      <button class="confirm" @click="$router.push('/confirm')">
+        주문 완료
+      </button>
     </div>
   </div>
 </template>
 
 <style scoped>
+button {
+  font-weight: 500;
+}
+
 .menu-page {
   display: flex;
-  flex-direction: column;
-  height: 100vh;
+  height: auto;
   padding: 20px;
+  flex-direction: column;
 }
 
 .category-tabs {
   display: flex;
-  gap: 7px;
-  overflow-x: auto;
+  align-items: center;
   padding: 10px;
+  gap: 10px;
+  overflow-x: auto;
 }
 
 .category-tabs button {
-  height: 42px;
-  padding: 15px 25px;
-  background: #dcdde1;
-  white-space: nowrap;
-  font-size: 1.2rem;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
+
+  height: 42px;
+  padding: 0 25px;
+  border-radius: 12px;
+  background: #dcdcdc;
+
+  font-size: 1.2rem;
+  white-space: nowrap;
 }
 
-.category-tabs button.active {
-  background: var(--primary);
+.category-tabs .active {
+  height: 45px;
   background-color: gray;
-  color: white;
-  transform: scale(1.1);
+  color: var(--bg-base);
+  font-size: 1.3rem;
 }
 
 .menu-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 15px;
-  margin-top: 20px;
 }
 
-.menu-btn,
-.rec-btn {
-  background: var(--white);
-  padding: 20px 10px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-  height: 100px;
+.menu-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: auto;
+  padding: 10px;
+  gap: 10px;
+
+  border-radius: 10px;
+  background: var(--bg-light);
+  box-shadow: 0 4px 6px var(--bg-shadow);
   font-size: 1rem;
   line-height: 1.5;
 }
 
+.menu-img {
+  height: 200px;
+  object-fit: contain;
+  border-radius: 10px;
+}
+
+.menu-name {
+  font-size: 1.3rem;
+}
+
+.menu-price {
+  font-size: 1rem;
+}
+
 .order-summary {
-  flex-shrink: 0;
-  margin-top: auto;
-  background: #f1f2f6;
-  padding: 20px;
-  border-radius: 20px 20px 0 0;
+  margin: 20px 0;
+  padding: 0 20px;
+  border-radius: 20px;
+  background: var(--bg-list);
+}
+
+.order-summary h2 {
+  margin: 10px 0;
+  font-size: 2rem;
 }
 
 .total-price {
   float: right;
+  margin: 5px 10px 5px 0;
   font-size: 1.5rem;
-  color: var(--primary);
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .action-btn {
   display: flex;
-  gap: 10px;
-  padding: 15px 0;
-}
-
-.action-btn div {
-  flex: 1;
+  gap: 15px;
 }
 
 .action-btn button {
-  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+
   padding: 20px;
-  font-size: 1.2rem;
-  background: var(--secondary);
-  color: black;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.3rem;
+  font-weight: bold;
 }
 
-.action-btn .next button {
-  background: var(--primary);
+.voice {
+  background: #dcdde1;
+  color: var(--text-primary);
+}
+
+.confirm {
+  background: var(--primary-color);
+  color: var(--bg-base);
 }
 </style>
