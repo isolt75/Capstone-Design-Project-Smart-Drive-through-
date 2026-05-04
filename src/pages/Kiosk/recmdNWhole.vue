@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { useOrderStore, type menuItem } from '@/stores/store';
 import orderCart from '@/components/orderCart.vue';
 import { storeToRefs } from 'pinia';
@@ -11,6 +11,25 @@ const fPrice = (p: number) => p.toLocaleString('ko-KR');
 function addMenu(menu: menuItem) {
   store.addItem(menu);
 }
+
+let timer: number | null = null;
+
+const showPopup = ref(false);
+
+function closePopup() {
+  showPopup.value = false;
+}
+
+onMounted(() => {
+  showPopup.value = true;
+  timer = window.setTimeout(() => {
+    closePopup();
+  }, 3000);
+});
+
+onBeforeUnmount(() => {
+  if (timer) clearTimeout(timer);
+});
 
 const recommendMenus = [
   { id: 1, name: '아메리카노', price: 3000, image: '/images/americano.png' },
@@ -127,6 +146,31 @@ const menuCategories = [
 
 <template>
   <div class="menu-page">
+    <!-- 추천 팝업 -->
+    <transition name="fade">
+      <div v-if="showPopup" class="popup-overlay">
+        <div class="popup-content">
+          <button class="popup-close" @click="closePopup">&times;</button>
+          <h2>추천 메뉴</h2>
+          <div class="menu-grid">
+            <button
+              v-for="item in recommendMenus"
+              :key="item.id"
+              class="menu-btn"
+              @click="addMenu(item)"
+            >
+              <img :src="item.image" :alt="item.name" class="menu-img" />
+              <div class="menu-info">
+                <span class="menu-name">{{ item.name }}</span
+                ><br />
+                <span class="menu-price">{{ fPrice(item.price) }}원</span>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
+
     <h1>환영합니다, {{ store.carPart }}님!</h1>
     <nav class="category-tabs">
       <button
@@ -178,6 +222,45 @@ const menuCategories = [
 <style scoped>
 button {
   font-weight: 500;
+}
+
+.popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+
+  background: rgba(0, 0, 0, 0.5);
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  z-index: 999;
+}
+
+.popup-content {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  width: 80%;
+  height: 80%;
+  overflow-y: auto;
+}
+
+.popup-close {
+  float: right;
+  font-size: 1.5rem;
+}
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.4s;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 
 .menu-page {
