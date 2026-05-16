@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia';
+import type { customerRes, lastOrderItem } from '@/api';
 
 function getToday(): string {
   const today = new Date();
@@ -13,9 +14,9 @@ function getNumofCar(carId: string) {
 }
 
 function getNextSequence(): string {
-  const todayKey = 'orderCounter-' + getToday();
-  const current = Number(localStorage.getItem(todayKey) || '0') + 1;
-  localStorage.setItem(todayKey, String(current));
+  const key = 'orderCounter-' + getToday();
+  const current = Number(localStorage.getItem(key) || '0') + 1;
+  localStorage.setItem(key, String(current));
   return String(current).padStart(3, '0');
 }
 
@@ -23,6 +24,9 @@ export type menuItem = {
   id: number;
   name: string;
   price: number;
+  category: string;
+  image: string;
+  caffeine?: boolean;
   quantity?: number;
 };
 
@@ -30,21 +34,20 @@ export const useOrderStore = defineStore('order', {
   state: () => ({
     // customerId: null as string | null,
     customerId: '12가3456' as string | null, //테스트용
+    customerName: null as string | null,
+    isNew: true as boolean,
+    lastOrder: [] as lastOrderItem[],
+
     orderNum: null as string | null,
+    seq: null as string | null,
     orderItems: [] as menuItem[],
     voiceText: null as string | null,
-    seq: null as string | null,
   }),
 
   getters: {
     // 차 번호 기반 고객 ID 생성
     carPart(state): string | null {
-      if (!state.customerId) return null;
-      return getNumofCar(state.customerId);
-    },
-
-    total(state): number {
-      return state.orderItems.reduce((sum, item) => sum + item.price, 0);
+      return state.customerId ? getNumofCar(state.customerId) : null;
     },
 
     //실시간 주문 반영
@@ -57,13 +60,13 @@ export const useOrderStore = defineStore('order', {
         const sameItems = list.filter((item) => item.id === id);
         return {
           ...sameItems[0],
-          count: sameItems.length,
+          quantity: sameItems.length,
           itemTotal: sameItems.reduce((sum, i) => sum + i.price, 0),
         };
       });
     },
 
-    // 총 합계 계산
+    // 총 합계 계산 -> 프론트는 화면 표시용 합계, 백엔드에 totalprice 대신 menuid+quantity 보내기
     totalPrice(state): number {
       return state.orderItems.reduce((sum, item) => sum + item.price, 0);
     },
@@ -72,6 +75,12 @@ export const useOrderStore = defineStore('order', {
   actions: {
     setCustomer(id: string) {
       this.customerId = id;
+    },
+
+    setCustomerInfo(res: customerRes) {
+      this.isNew = res.isNew;
+      if (res.plate) this.customerId = res.plate;
+      this.lastOrder = res.lastOrder ?? [];
     },
 
     addItem(item: menuItem) {
@@ -91,9 +100,7 @@ export const useOrderStore = defineStore('order', {
     decreaseItem(id: number) {
       const lastIndex = this.orderItems.map((item) => item.id).lastIndexOf(id);
       if (lastIndex !== -1) {
-        const newItems = [...this.orderItems];
-        newItems.splice(lastIndex, 1);
-        this.orderItems = newItems;
+        this.orderItems.splice(lastIndex, 1);
         console.log('삭제 성공:', this.orderItems.length);
       }
     },

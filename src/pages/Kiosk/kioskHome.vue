@@ -1,13 +1,27 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useOrderStore } from '@/stores/store';
+import { getCustomer } from '@/api/customer';
 
 const router = useRouter();
 const store = useOrderStore();
+const status = ref('차량 인식 중...');
 
-onMounted(() => {
+onMounted(async () => {
   store.clear();
+  const plate = store.customerId ?? '12가 3456'; //테스트용
+  try {
+    const res = await getCustomer(plate);
+    store.setCustomerInfo(res);
+
+    status.value = res.isNew
+      ? '신규 고객님, 환영합니다!'
+      : `${res.customerName}님, 다시 오셨네요!`;
+  } catch (err) {
+    console.error('고객 조회 실패', err);
+    status.value = '고객 정보를 불러오지 못했습니다.';
+  }
 
   setTimeout(() => {
     router.push('/recmd');
@@ -17,7 +31,7 @@ onMounted(() => {
 
 <template>
   <div>
-    <h1>차량 인식 중...</h1>
+    <h1>{{ status }}</h1>
     <p>잠시만 기다려 주세요</p>
   </div>
 </template>

@@ -21,10 +21,10 @@ const fPrice = (p: number) => p.toLocaleString('ko-KR');
       <tbody>
         <tr v-for="item in orderCart" :key="item.id" class="qty">
           <td class="item-name">{{ item.name }}</td>
-          <td class="item-count">
+          <td class="item-quantity">
             <div class="qty-control">
               <button @click="store.decreaseItem(item.id)">&minus;</button>
-              <span>{{ item.count }}</span>
+              <span>{{ item.quantity }}</span>
               <button @click="store.increaseItem(item.id)">+</button>
             </div>
           </td>
