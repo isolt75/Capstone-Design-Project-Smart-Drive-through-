@@ -19,6 +19,6 @@ export const getMenus = async (): Promise<menuItem[]> => {
 
 export const getPopularMenus = async (): Promise<menuItem[]> => {
   const { data } = await api.get<{ top3: menu[] }>('/popular');
-  console.log('menus ok:', data);
+  console.log('recommend menus ok:', data);
   return data.top3.map(toMenuItem);
 };

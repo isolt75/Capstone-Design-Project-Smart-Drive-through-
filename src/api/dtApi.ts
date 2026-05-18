@@ -10,7 +10,6 @@ export interface menu {
 
 // 주문
 export interface orderItem {
-  success: any;
   menuId: number;
   quantity: number;
 }
@@ -26,6 +25,8 @@ export interface orderRes {
   success: boolean;
   customerId: number;
   orderTime: string;
+  orderNum: string;
+  seq: string;
 }
 
 // 고객

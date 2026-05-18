@@ -14,6 +14,210 @@ const activeTab = ref('추천');
 const recommendMenus = ref<menuItem[]>([]);
 const menuCategories = ref<{ name: string; items: menuItem[] }[]>([]);
 const showPopup = ref(false);
+
+// 로컬 테스트 목업 데이터
+const USE_MOCK = true;
+const mockRecMenu: menuItem[] = [
+  {
+    id: 1,
+    name: '아메리카노',
+    price: 3000,
+    category: '커피',
+    image: getMenuImage(1),
+  },
+  {
+    id: 6,
+    name: '카페라떼',
+    price: 4000,
+    category: '커피',
+    image: getMenuImage(6),
+  },
+  {
+    id: 8,
+    name: '밀크쉐이크',
+    price: 4000,
+    category: '아이스 블렌디드',
+    image: getMenuImage(8),
+  },
+  {
+    id: 9,
+    name: '딸기요거트스무디',
+    price: 4500,
+    category: '아이스 블렌디드',
+    image: getMenuImage(9),
+  },
+  {
+    id: 11,
+    name: '레몬에이드',
+    price: 3500,
+    category: '에이드, 주스',
+    image: getMenuImage(11),
+  },
+  {
+    id: 16,
+    name: '아이스티',
+    price: 2000,
+    category: '티',
+    image: getMenuImage(16),
+  },
+];
+const mockMenu: { name: string; items: menuItem[] }[] = [
+  { name: '추천', items: mockRecMenu },
+  {
+    name: '커피',
+    items: [
+      {
+        id: 1,
+        name: '아메리카노',
+        price: 3000,
+        category: '커피',
+        image: getMenuImage(1),
+      },
+      {
+        id: 2,
+        name: '콜드브루',
+        price: 4500,
+        category: '커피',
+        image: getMenuImage(2),
+      },
+      {
+        id: 3,
+        name: '카라멜 마키아또',
+        price: 4000,
+        category: '커피',
+        image: getMenuImage(3),
+      },
+      {
+        id: 4,
+        name: '카푸치노',
+        price: 4000,
+        category: '커피',
+        image: getMenuImage(4),
+      },
+      {
+        id: 5,
+        name: '카페모카',
+        price: 4000,
+        category: '커피',
+        image: getMenuImage(5),
+      },
+      {
+        id: 6,
+        name: '카페라떼',
+        price: 4000,
+        category: '커피',
+        image: getMenuImage(6),
+      },
+    ],
+  },
+  {
+    name: '아이스 블렌디드',
+    items: [
+      {
+        id: 7,
+        name: '자바칩 프라페',
+        price: 4000,
+        category: '아이스 블렌디드',
+        image: getMenuImage(7),
+      },
+      {
+        id: 8,
+        name: '밀크쉐이크',
+        price: 4000,
+        category: '아이스 블렌디드',
+        image: getMenuImage(8),
+      },
+      {
+        id: 9,
+        name: '딸기요거트스무디',
+        price: 4500,
+        category: '아이스 블렌디드',
+        image: getMenuImage(9),
+      },
+      {
+        id: 10,
+        name: '망고요거트스무디',
+        price: 4500,
+        category: '아이스 블렌디드',
+        image: getMenuImage(10),
+      },
+    ],
+  },
+  {
+    name: '에이드, 주스',
+    items: [
+      {
+        id: 11,
+        name: '레몬에이드',
+        price: 3500,
+        category: '에이드, 주스',
+        image: getMenuImage(11),
+      },
+      {
+        id: 12,
+        name: '오렌지주스',
+        price: 3000,
+        category: '에이드, 주스',
+        image: getMenuImage(12),
+      },
+      {
+        id: 13,
+        name: '라임모히또에이드',
+        price: 3500,
+        category: '에이드, 주스',
+        image: getMenuImage(13),
+      },
+    ],
+  },
+  {
+    name: '티',
+    items: [
+      {
+        id: 14,
+        name: '녹차',
+        price: 2500,
+        category: '티',
+        image: getMenuImage(14),
+      },
+      {
+        id: 15,
+        name: '자몽허니블랙티',
+        price: 4000,
+        category: '티',
+        image: getMenuImage(15),
+      },
+      {
+        id: 16,
+        name: '아이스티',
+        price: 2000,
+        category: '티',
+        image: getMenuImage(16),
+      },
+      {
+        id: 17,
+        name: '말차라떼',
+        price: 3500,
+        category: '티',
+        image: getMenuImage(17),
+      },
+      {
+        id: 18,
+        name: '초코라떼',
+        price: 3000,
+        category: '티',
+        image: getMenuImage(18),
+      },
+      {
+        id: 19,
+        name: '우유',
+        price: 2000,
+        category: '티',
+        image: getMenuImage(19),
+      },
+    ],
+  },
+];
+
 let timer: number | null = null;
 
 const fPrice = (p: number) => p.toLocaleString('ko-KR');
@@ -22,23 +226,28 @@ const closePopup = () => (showPopup.value = false);
 
 onMounted(async () => {
   try {
-    const [allMenus, popular] = await Promise.all([
-      getMenus(),
-      getPopularMenus(),
-    ]);
-    recommendMenus.value = popular;
+    if (USE_MOCK) {
+      recommendMenus.value = mockRecMenu;
+      menuCategories.value = mockMenu;
+    } else {
+      const [allMenus, popular] = await Promise.all([
+        getMenus(),
+        getPopularMenus(),
+      ]);
+      recommendMenus.value = popular;
 
-    // 카테고리별 그룹화
-    const grouped: Record<string, menuItem[]> = {};
-    allMenus.forEach((m) => {
-      const list = grouped[m.category] ?? (grouped[m.category] = []);
-      list.push(m);
-    });
+      // 카테고리별 그룹화
+      const grouped: Record<string, menuItem[]> = {};
+      allMenus.forEach((m) => {
+        const list = grouped[m.category] ?? (grouped[m.category] = []);
+        list.push(m);
+      });
 
-    menuCategories.value = [
-      { name: '추천', items: recommendMenus.value },
-      ...Object.entries(grouped).map(([name, items]) => ({ name, items })),
-    ];
+      menuCategories.value = [
+        { name: '추천', items: recommendMenus.value },
+        ...Object.entries(grouped).map(([name, items]) => ({ name, items })),
+      ];
+    }
   } catch (err) {
     console.error('메뉴 로딩 실패', err);
   }

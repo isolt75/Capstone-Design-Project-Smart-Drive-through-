@@ -8,12 +8,10 @@ const api = axios.create({
   timeout: 10000,
 });
 
-api.interceptors.response.use(
-  (res) => res,
-  (err) => {
-    console.error('[API]', err.response?.status, err.config?.url);
-    return Promise.reject(err);
-  },
-);
+api.interceptors.request.use((config) => {
+  console.log('[API]', config.method?.toUpperCase(), config.url);
+
+  return config;
+});
 
 export default api;

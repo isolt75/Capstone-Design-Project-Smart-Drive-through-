@@ -1,13 +1,16 @@
 <script setup lang="ts">
+import axios from 'axios';
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useOrderStore } from '@/stores/store';
-import { createOrder } from '@/api';
+import { createOrder } from '@/api/order';
 
 const store = useOrderStore();
 const router = useRouter();
 const remaining = ref(5);
 const error = ref<string | null>(null);
+
+const USE_MOCK = true;
 
 onMounted(async () => {
   if (!store.orderItems || store.orderItems.length === 0) {
@@ -19,7 +22,16 @@ onMounted(async () => {
     error.value = '차량 정보가 없습니다.';
     return;
   }
+
+  // 로컬 테스트 시
   const success = store.orderComplete();
+
+  // 백엔드 연결 시
+  // if (data.success) {
+  //   store.orderNum = data.orderNum;
+  //   store.seq = data.seq;
+  //   store.saveCompletedOrder();
+  // }
 
   if (!success) {
     error.value = '주문번호 생성 실패';
@@ -31,36 +43,40 @@ onMounted(async () => {
   store.orderItems.forEach((i) => {
     counts.set(i.id, (counts.get(i.id) ?? 0) + 1);
   });
+
   const items = Array.from(counts, ([menuId, quantity]) => ({
     menuId,
     quantity,
   }));
 
   try {
-    const data = await createOrder({
-      orderNum: store.orderNum!,
-      plate: store.customerId,
-      customerName: store.customerName ?? store.customerId!, // 번호판 = 이름 정책
-      items: [
-        {
-          menuId: 1,
-          quantity: 2,
-          success: undefined,
-        },
-      ],
-    });
-    if (data.success) {
-      alert('주문 성공');
+    let success = false;
+    if (USE_MOCK) {
+      console.log('목업 주문 성공!');
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      success = true;
+    } else {
+      const data = await createOrder({
+        plate: store.customerId,
+        customerName: store.customerName ?? store.customerId!, // 번호판 = 이름 정책
+        orderNum: store.orderNum!,
+        items,
+      });
+      success = data.success;
     }
-  } catch (err: any) {
+    if (success) {
+      store.saveCompletedOrder();
+      console.log('completedOrders:', store.completedOrders);
+      alert('주문 성공'); // 배포 이전 삭제
+    }
+  } catch (err: unknown) {
     console.error(err);
-    if (err.response) {
-      alert(err.response.data.message ?? '주문 실패');
+
+    if (axios.isAxiosError(err)) {
+      alert(err.response?.data.message ?? '주문 실패');
     } else {
       alert('서버 연결 실패');
     }
-    // catch (err) {
-    //   console.error('주문 실패', err);
     error.value = '주문 처리 중 오류가 발생했습니다.';
     return;
   }
@@ -78,7 +94,7 @@ onMounted(async () => {
   }, 1000);
 
   setTimeout(() => {
-    router.push('/');
+    router.push('/pos');
   }, 5000);
 });
 </script>
@@ -87,9 +103,7 @@ onMounted(async () => {
   <div class="order-complete">
     <h1 v-if="!error">주문 완료!</h1>
     <h1 v-else class="err">{{ error }}</h1>
-
     <h3 v-if="!error">고객님의 주문 번호: {{ store.seq }}</h3>
-
     <div class="count-down">
       <p>차량 이동 →</p>
       <p v-if="remaining > 0">{{ remaining }}초 후 초기 화면으로 이동합니다</p>

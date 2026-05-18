@@ -30,6 +30,16 @@ export type menuItem = {
   quantity?: number;
 };
 
+export interface completedOrder {
+  orderNum: string;
+  customerId: string;
+  items: {
+    id: number;
+    name: string;
+    quantity: number;
+  }[];
+}
+
 export const useOrderStore = defineStore('order', {
   state: () => ({
     // customerId: null as string | null,
@@ -41,6 +51,7 @@ export const useOrderStore = defineStore('order', {
     orderNum: null as string | null,
     seq: null as string | null,
     orderItems: [] as menuItem[],
+    completedOrders: [] as completedOrder[],
     voiceText: null as string | null,
   }),
 
@@ -121,6 +132,22 @@ export const useOrderStore = defineStore('order', {
       this.seq = getNextSequence();
       this.orderNum = `${getToday()}-${getNumofCar(this.customerId)}-${this.seq}`;
       return true;
+    },
+
+    // staffPos에 주문 내역 전달
+    saveCompletedOrder() {
+      if (!this.orderNum || !this.customerId) return;
+
+      this.completedOrders.push({
+        orderNum: this.orderNum,
+        customerId: this.customerId,
+
+        items: this.orderCart.map((item) => ({
+          id: item.id,
+          name: item.name,
+          quantity: item.quantity,
+        })),
+      });
     },
 
     // 초기화
