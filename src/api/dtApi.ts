@@ -17,16 +17,17 @@ export interface orderItem {
 export interface orderPayload {
   plate: string;
   customerName: string;
-  orderNum: string;
+  // orderNum: string;
   items: orderItem[];
 }
 
 export interface orderRes {
   success: boolean;
   customerId: number;
+  customerName: string;
+  plate: string;
   orderTime: string;
-  orderNum: string;
-  seq: string;
+  orderNumber: string;
 }
 
 // 고객
@@ -37,13 +38,27 @@ export interface lastOrderItem {
 }
 
 export interface customerRes {
-  isNew: boolean;
-  customerId?: number;
   plate?: string;
   lastOrder?: lastOrderItem[];
+  isNew: boolean;
+  customerId?: number;
+  customerName?: string;
 }
 
 // STT
 export interface STTRes {
   text: string;
+}
+
+// 직원 대기 주문
+export interface staffOrder {
+  orderNum: string;
+  customerId: string;
+  items: staffOrderItem[];
+}
+
+export interface staffOrderItem {
+  id: number;
+  name: string;
+  quantity: number;
 }

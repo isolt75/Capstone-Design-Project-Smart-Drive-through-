@@ -16,7 +16,7 @@ const menuCategories = ref<{ name: string; items: menuItem[] }[]>([]);
 const showPopup = ref(false);
 
 // 로컬 테스트 목업 데이터
-const USE_MOCK = true;
+const USE_MOCK = false;
 const mockRecMenu: menuItem[] = [
   {
     id: 1,

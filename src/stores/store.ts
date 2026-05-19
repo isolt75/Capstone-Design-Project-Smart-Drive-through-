@@ -13,12 +13,20 @@ function getNumofCar(carId: string) {
   return carId.slice(-4);
 }
 
-function getNextSequence(): string {
-  const key = 'orderCounter-' + getToday();
-  const current = Number(localStorage.getItem(key) || '0') + 1;
-  localStorage.setItem(key, String(current));
-  return String(current).padStart(3, '0');
-}
+// 백엔드로 넘길 것/로컬 테스트시 살리기
+// function getNextSequence(): string {
+//   const key = 'orderCounter-' + getToday();
+//   const current = Number(localStorage.getItem(key) || '0') + 1;
+//   localStorage.setItem(key, String(current));
+//   return String(current).padStart(3, '0');
+// }
+
+// 메뉴 옵션
+type selectedOption = {
+  group: string;
+  option: string;
+  addPrice: number;
+};
 
 export type menuItem = {
   id: number;
@@ -91,6 +99,7 @@ export const useOrderStore = defineStore('order', {
     setCustomerInfo(res: customerRes) {
       this.isNew = res.isNew;
       if (res.plate) this.customerId = res.plate;
+      if (res.customerName) this.customerName = res.customerName;
       this.lastOrder = res.lastOrder ?? [];
     },
 
@@ -127,12 +136,12 @@ export const useOrderStore = defineStore('order', {
     },
 
     // 최종 주문 번호 생성
-    orderComplete() {
-      if (!this.customerId) return false;
-      this.seq = getNextSequence();
-      this.orderNum = `${getToday()}-${getNumofCar(this.customerId)}-${this.seq}`;
-      return true;
-    },
+    // orderComplete() {
+    //   if (!this.customerId) return false;
+    //   this.seq = getNextSequence();
+    //   this.orderNum = `${getToday()}-${getNumofCar(this.customerId)}-${this.seq}`;
+    //   return true;
+    // },
 
     // staffPos에 주문 내역 전달
     saveCompletedOrder() {
@@ -152,6 +161,8 @@ export const useOrderStore = defineStore('order', {
 
     // 초기화
     clear() {
+      this.customerId = null;
+      this.customerName = null;
       this.orderItems = [];
       this.voiceText = '';
       this.orderNum = null;

@@ -11,6 +11,11 @@ const status = ref('차량 인식 중...');
 onMounted(async () => {
   store.clear();
   const plate = store.customerId ?? '12가 3456'; //테스트용
+  if (!plate) {
+    status.value = '차량 번호 인식 실패';
+    return;
+  }
+
   try {
     const res = await getCustomer(plate);
     store.setCustomerInfo(res);

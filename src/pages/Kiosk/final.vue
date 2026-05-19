@@ -10,7 +10,7 @@ const router = useRouter();
 const remaining = ref(5);
 const error = ref<string | null>(null);
 
-const USE_MOCK = true;
+const USE_MOCK = false;
 
 onMounted(async () => {
   if (!store.orderItems || store.orderItems.length === 0) {
@@ -24,19 +24,11 @@ onMounted(async () => {
   }
 
   // 로컬 테스트 시
-  const success = store.orderComplete();
-
-  // 백엔드 연결 시
-  // if (data.success) {
-  //   store.orderNum = data.orderNum;
-  //   store.seq = data.seq;
-  //   store.saveCompletedOrder();
+  // const success = store.orderComplete();
+  //   if (!success) {
+  //   error.value = '주문번호 생성 실패';
+  //   return;
   // }
-
-  if (!success) {
-    error.value = '주문번호 생성 실패';
-    return;
-  }
 
   // 백엔드로 보낼 주문 항목 (id+수량으로 집계)
   const counts = new Map<number, number>();
@@ -55,14 +47,23 @@ onMounted(async () => {
       console.log('목업 주문 성공!');
       await new Promise((resolve) => setTimeout(resolve, 500));
       success = true;
+      store.orderNum;
+      store.seq;
     } else {
+      console.log({
+        plate: store.customerId,
+        customerName: store.customerName ?? store.customerId!,
+        items,
+      }); // 백엔드 데이터 전송 확인용, 배포 이전 삭제
       const data = await createOrder({
         plate: store.customerId,
-        customerName: store.customerName ?? store.customerId!, // 번호판 = 이름 정책
-        orderNum: store.orderNum!,
+        customerName: store.customerName ?? store.customerId!, // 번호판 = 이름
         items,
       });
+
       success = data.success;
+      store.orderNum = data.orderNumber;
+      // store.seq = data.seq;
     }
     if (success) {
       store.saveCompletedOrder();
@@ -103,7 +104,7 @@ onMounted(async () => {
   <div class="order-complete">
     <h1 v-if="!error">주문 완료!</h1>
     <h1 v-else class="err">{{ error }}</h1>
-    <h3 v-if="!error">고객님의 주문 번호: {{ store.seq }}</h3>
+    <h3 v-if="!error">고객님의 주문 번호: {{ store.orderNum }}</h3>
     <div class="count-down">
       <p>차량 이동 →</p>
       <p v-if="remaining > 0">{{ remaining }}초 후 초기 화면으로 이동합니다</p>
