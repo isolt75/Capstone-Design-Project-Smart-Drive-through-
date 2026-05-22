@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import axios from 'axios';
-import { onMounted, ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useOrderStore } from '@/stores/store';
 import { createOrder } from '@/api/order';
@@ -10,7 +10,8 @@ const router = useRouter();
 const remaining = ref(5);
 const error = ref<string | null>(null);
 
-const USE_MOCK = false;
+let interval: number | null = null;
+let timeout: number | null = null;
 
 onMounted(async () => {
   if (!store.orderItems || store.orderItems.length === 0) {
@@ -23,52 +24,37 @@ onMounted(async () => {
     return;
   }
 
-  // 로컬 테스트 시
-  // const success = store.orderComplete();
-  //   if (!success) {
-  //   error.value = '주문번호 생성 실패';
-  //   return;
-  // }
-
   // 백엔드로 보낼 주문 항목 (id+수량으로 집계)
-  const counts = new Map<number, number>();
-  store.orderItems.forEach((i) => {
-    counts.set(i.id, (counts.get(i.id) ?? 0) + 1);
-  });
+  // const counts = new Map<number, number>();
+  // store.orderItems.forEach((i) => {
+  //   counts.set(i.id, (counts.get(i.id) ?? 0) + 1);
+  // });
 
-  const items = Array.from(counts, ([menuId, quantity]) => ({
-    menuId,
-    quantity,
-  }));
+  // const items = Array.from(counts, ([menuId, quantity]) => ({
+  //   menuId,
+  //   quantity,
+  // }));
 
   try {
-    let success = false;
-    if (USE_MOCK) {
-      console.log('목업 주문 성공!');
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      success = true;
-      store.orderNum;
-      store.seq;
-    } else {
-      console.log({
-        plate: store.customerId,
-        customerName: store.customerName ?? store.customerId!,
-        items,
-      }); // 백엔드 데이터 전송 확인용, 배포 이전 삭제
-      const data = await createOrder({
-        plate: store.customerId,
-        customerName: store.customerName ?? store.customerId!, // 번호판 = 이름
-        items,
-      });
+    const items = store.orderItems.map((item) => ({
+      menuId: item.id,
+      quantity: item.quantity,
+    }));
 
-      success = data.success;
-      store.orderNum = data.orderNumber;
-      // store.seq = data.seq;
-    }
-    if (success) {
+    const data = await createOrder({
+      plate: store.customerId,
+      customerName: store.customerName ?? store.customerId!, // 번호판 = 이름
+      items,
+    });
+
+    store.orderNum = data.orderNumber;
+    if (data.success) {
       store.saveCompletedOrder();
       console.log('completedOrders:', store.completedOrders);
       alert('주문 성공'); // 배포 이전 삭제
+    } else {
+      error.value = '주문 처리에 실패했습니다.';
+      return;
     }
   } catch (err: unknown) {
     console.error(err);
@@ -78,25 +64,30 @@ onMounted(async () => {
     } else {
       alert('서버 연결 실패');
     }
-    error.value = '주문 처리 중 오류가 발생했습니다.';
     return;
   }
 
   //카운트다운 출력
   const endTime = Date.now() + 5000;
-  const interval = setInterval(() => {
+  interval = window.setInterval(() => {
     const sec = Math.ceil((endTime - Date.now()) / 1000);
     if (sec <= 0) {
-      clearInterval(interval);
+      if (interval) clearInterval(interval);
       remaining.value = 0;
       return;
     }
     remaining.value = sec;
   }, 1000);
 
-  setTimeout(() => {
+  timeout = window.setTimeout(() => {
+    // store.clear();
     router.push('/pos');
   }, 5000);
+});
+
+onBeforeUnmount(() => {
+  if (interval) clearInterval(interval);
+  if (timeout) clearTimeout(timeout);
 });
 </script>
 

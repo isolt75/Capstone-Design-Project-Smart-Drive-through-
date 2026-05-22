@@ -1,24 +1,38 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { getWaitingOrders, type staffOrder } from '@/api';
-const orders = ref<staffOrder[]>([]);
+import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { getWaitingOrders, type StaffOrder } from '@/api';
+const orders = ref<StaffOrder[]>([]);
 const loading = ref(true);
 const error = ref<string | null>(null);
 
+let poll: number;
+
+const fetchOrders = async () => {
+  try {
+    orders.value = await getWaitingOrders();
+  } catch (err: any) {
+    error.value =
+      err.response?.data?.message ?? '주문 목록을 불러오지 못했습니다.';
+  }
+};
+
 onMounted(async () => {
+  fetchOrders();
+  poll = window.setInterval(fetchOrders, 5000);
+
   try {
     orders.value = await getWaitingOrders();
   } catch (err) {
     console.error(err);
-
     error.value = '주문 목록을 불러오는 중 오류가 발생했습니다.';
   } finally {
     loading.value = false;
   }
 });
-// import { useOrderStore } from '@/stores/store';
 
-// const store = useOrderStore();
+onBeforeUnmount(() => {
+  clearInterval(poll);
+});
 </script>
 
 <template>

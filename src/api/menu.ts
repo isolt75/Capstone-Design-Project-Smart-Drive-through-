@@ -1,24 +1,24 @@
 import api from './http';
-import type { menu } from './dtApi';
-import type { menuItem } from '@/stores/store';
+import type { Menu } from './dtApi';
+import type { MenuItem } from '@/stores/store';
 import { getMenuImage } from '@/components/menuImages';
 
-const toMenuItem = (m: menu): menuItem => ({
-  id: m.menuId,
-  name: m.menuName,
-  price: m.price,
-  category: m.category,
-  image: getMenuImage(m.menuId),
+const toMenuItem = ({ menuId, menuName, price, category }: Menu): MenuItem => ({
+  id: menuId,
+  name: menuName,
+  price: price,
+  category: category,
+  image: getMenuImage(menuId),
+  quantity: 1,
 });
 
-export const getMenus = async (): Promise<menuItem[]> => {
-  const { data } = await api.get<{ menus: menu[] }>('/menus');
-  console.log('menus ok:', data);
+export const getMenus = async (): Promise<MenuItem[]> => {
+  const { data } = await api.get<{ menus: Menu[] }>('/menus');
   return data.menus.map(toMenuItem);
 };
 
-export const getPopularMenus = async (): Promise<menuItem[]> => {
-  const { data } = await api.get<{ top3: menu[] }>('/popular');
+export const getPopularMenus = async (): Promise<MenuItem[]> => {
+  const { data } = await api.get<{ top3: Menu[] }>('/popular');
   console.log('recommend menus ok:', data);
   return data.top3.map(toMenuItem);
 };

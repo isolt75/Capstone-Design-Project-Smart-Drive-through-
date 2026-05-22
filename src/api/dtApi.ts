@@ -1,5 +1,5 @@
 // 메뉴
-export interface menu {
+export interface Menu {
   menuId: number;
   menuName: string;
   price: number;
@@ -9,19 +9,19 @@ export interface menu {
 }
 
 // 주문
-export interface orderItem {
+export interface OrderItem {
   menuId: number;
   quantity: number;
 }
 
-export interface orderPayload {
+export interface OrderPayload {
   plate: string;
   customerName: string;
   // orderNum: string;
-  items: orderItem[];
+  items: OrderItem[];
 }
 
-export interface orderRes {
+export interface OrderRes {
   success: boolean;
   customerId: number;
   customerName: string;
@@ -31,19 +31,25 @@ export interface orderRes {
 }
 
 // 고객
-export interface lastOrderItem {
+export interface LastOrderItem {
   menuId: number;
   menuName: string;
   quantity: number;
 }
 
-export interface customerRes {
-  plate?: string;
-  lastOrder?: lastOrderItem[];
-  isNew: boolean;
-  customerId?: number;
-  customerName?: string;
-}
+type NewCustomer = {
+  isNew: true;
+};
+
+type ExistingCustomer = {
+  isNew: false;
+  plate: string;
+  customerId: number;
+  customerName: string;
+  lastOrder: LastOrderItem[];
+};
+
+export type CustomerRes = NewCustomer | ExistingCustomer;
 
 // STT
 export interface STTRes {
@@ -51,13 +57,13 @@ export interface STTRes {
 }
 
 // 직원 대기 주문
-export interface staffOrder {
+export interface StaffOrder {
   orderNum: string;
   customerId: string;
-  items: staffOrderItem[];
+  items: StaffOrderItem[];
 }
 
-export interface staffOrderItem {
+export interface StaffOrderItem {
   id: number;
   name: string;
   quantity: number;

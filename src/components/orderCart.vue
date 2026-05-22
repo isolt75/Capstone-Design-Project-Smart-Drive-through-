@@ -6,6 +6,9 @@ const store = useOrderStore();
 const { orderCart } = storeToRefs(store);
 
 const fPrice = (p: number) => p.toLocaleString('ko-KR');
+const decrease = (id: number) => store.decreaseItem(id);
+const increase = (id: number) => store.increaseItem(id);
+const remove = (id: number) => store.removeItem(id);
 </script>
 
 <template>
@@ -23,16 +26,14 @@ const fPrice = (p: number) => p.toLocaleString('ko-KR');
           <td class="item-name">{{ item.name }}</td>
           <td class="item-quantity">
             <div class="qty-control">
-              <button @click="store.decreaseItem(item.id)">&minus;</button>
+              <button @click="decrease(item.id)">&minus;</button>
               <span>{{ item.quantity }}</span>
-              <button @click="store.increaseItem(item.id)">+</button>
+              <button @click="increase(item.id)">+</button>
             </div>
           </td>
           <td class="item-total">
             {{ fPrice(item.itemTotal) }}
-            <button class="del" @click="store.removeItem(item.id)">
-              &times;
-            </button>
+            <button class="del" @click="remove(item.id)">&times;</button>
           </td>
         </tr>
         <tr v-if="orderCart.length === 0">
