@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+backend/.env
+backend/uploads/
+
+# Node / Vue
+node_modules/
+frontend/.env
+dist/
+*.local
+
+# Editor / OS
+.vscode/
+.DS_Store
+Thumbs.db
