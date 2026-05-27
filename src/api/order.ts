@@ -7,9 +7,6 @@ export const createOrder = async (payload: OrderPayload) => {
 };
 
 export const getWaitingOrders = async (): Promise<StaffOrder[]> => {
-  const { data } = await api.get<StaffOrder[]>(
-    // 'http://192.168.0.80:8080/customer',
-    '/orders/waiting',
-  );
+  const { data } = await api.get<StaffOrder[]>('/orders');
   return data;
 };

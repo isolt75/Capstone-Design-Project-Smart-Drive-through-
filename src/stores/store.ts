@@ -46,6 +46,7 @@ export const useOrderStore = defineStore('order', {
     orderItems: [] as MenuItem[],
     completedOrders: [] as CompletedOrder[],
     voiceText: null as string | null,
+    availableMenus: [] as MenuItem[],
   }),
 
   getters: {
@@ -77,21 +78,81 @@ export const useOrderStore = defineStore('order', {
     },
 
     setCustomerInfo(res: CustomerRes) {
-      Object.assign(this, {
-        isNew: res.isNew,
-        customerId: res.plate ?? this.customerId,
-        customerName: res.customerName ?? null,
-        lastOrder: res.lastOrder ?? [],
+      if (res.isNew) {
+        Object.assign(this, {
+          isNew: true,
+          customerName: null,
+          lastOrder: [],
+        });
+      } else
+        Object.assign(this, {
+          isNew: res.isNew,
+          customerId: res.plate ?? this.customerId,
+          customerName: res.customerName ?? null,
+          lastOrder: res.lastOrder ?? [],
+        });
+    },
+
+    parseVoiceOrder(text: string) {
+      const numberMap: Record<string, number> = {
+        한: 1,
+        하나: 1,
+        두: 2,
+        둘: 2,
+        세: 3,
+        셋: 3,
+        네: 4,
+        넷: 4,
+        다섯: 5,
+        여섯: 6,
+        일곱: 7,
+        여덟: 8,
+        아홉: 9,
+        열: 10,
+      };
+
+      const lowerText = text.replace(/\s+/g, '');
+
+      // 메뉴 목록 기준 탐색
+      const menuList = this.availableMenus ?? []; // 메뉴 저장 필요
+
+      menuList.forEach((menu) => {
+        if (lowerText.includes(menu.name.replace(/\s+/g, ''))) {
+          let quantity = 1;
+
+          // 숫자 찾기
+          const match = text.match(
+            /(\d+|한|하나|두|둘|세|셋|네|넷|다섯|여섯|일곱|여덟|아홉|열)\s*잔/,
+          );
+
+          if (match?.[1]) {
+            const value = match[1];
+
+            if (!isNaN(Number(value))) {
+              quantity = Number(value);
+            } else {
+              quantity = numberMap[value] ?? 1;
+            }
+          }
+
+          this.addItem(menu, quantity);
+        }
       });
     },
 
-    addItem(item: MenuItem) {
+    setMenus(menus: MenuItem[]) {
+      this.availableMenus = menus;
+    },
+
+    addItem(item: MenuItem, qty = 1) {
       const existing = this.orderItems.find((i) => i.id === item.id);
-      if (existing) existing.quantity++;
-      else {
+
+      if (existing) {
+        existing.quantity += qty;
+      } else {
         this.orderItems.push({
           ...item,
-          quantity: 1,
+          quantity: qty,
         });
       }
     },

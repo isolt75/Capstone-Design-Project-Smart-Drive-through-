@@ -13,7 +13,9 @@ onMounted(async () => {
   try {
     const plateRes = await getPlate();
     const plate = plateRes.plate;
-    console.log('plate = ', plate);
+    // console.log('plate = ', plate);
+    console.log('plateRes = ', plateRes);
+    console.log('plate = ', plateRes.plate);
 
     if (!plate) {
       status.value = '차량 번호 인식 실패';

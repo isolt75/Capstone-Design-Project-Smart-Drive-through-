@@ -1,7 +1,33 @@
 <template>
-  <router-view />
+  <div class="rotated-app">
+    <router-view />
+  </div>
 </template>
 <style>
+html,
+body,
+#app {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* .rotated-app {
+  width: 100vh;
+  height: 100vw;
+
+  transform: rotate(90deg);
+
+  transform-origin: top left;
+
+  position: absolute;
+  top: 0;
+  left: 100vw;
+
+  overflow: auto;
+} */
+
 :root {
   --primary-color: #ff9f43;
   --bg-base: #fff;

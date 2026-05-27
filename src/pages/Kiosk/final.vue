@@ -24,17 +24,6 @@ onMounted(async () => {
     return;
   }
 
-  // 백엔드로 보낼 주문 항목 (id+수량으로 집계)
-  // const counts = new Map<number, number>();
-  // store.orderItems.forEach((i) => {
-  //   counts.set(i.id, (counts.get(i.id) ?? 0) + 1);
-  // });
-
-  // const items = Array.from(counts, ([menuId, quantity]) => ({
-  //   menuId,
-  //   quantity,
-  // }));
-
   try {
     const items = store.orderItems.map((item) => ({
       menuId: item.id,
@@ -81,7 +70,7 @@ onMounted(async () => {
 
   timeout = window.setTimeout(() => {
     // store.clear();
-    router.push('/pos');
+    router.push('/');
   }, 5000);
 });
 

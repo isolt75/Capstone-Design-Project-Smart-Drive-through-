@@ -70,14 +70,12 @@ onBeforeUnmount(() => {
 <style scoped>
 .staff-page {
   max-width: 900px;
-  /* margin: 0 auto; */
   padding: 20px;
 }
 
 .staff-page h1 {
   margin-bottom: 24px;
   font-size: 2rem;
-  /* text-align: center; */
 }
 
 .order-box {
@@ -91,7 +89,6 @@ onBeforeUnmount(() => {
 .order-header {
   display: flex;
   justify-content: space-between;
-  /* align-items: center; */
   margin-bottom: 16px;
   padding-bottom: 10px;
   border-bottom: 1px solid #ddd;
@@ -119,7 +116,6 @@ onBeforeUnmount(() => {
 .state-msg {
   margin: 60px 0;
   font-size: 1.2rem;
-  /* text-align: center; */
 }
 
 .err {
@@ -128,8 +124,6 @@ onBeforeUnmount(() => {
 
 .home-btn {
   display: block;
-  /* margin: 40px auto 0; */
-  /* padding: 16px 24px; */
   padding: 0;
   border: none;
   border-radius: 12px;

@@ -1,94 +1,43 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { ref, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useOrderStore, type MenuItem } from '@/stores/store';
-import { getMenus, getPopularMenus } from '@/api/menu';
-import orderCart from '@/components/orderCart.vue';
-import sttPanel from '@/stt/sttPanel.vue';
+import { getMenus } from '@/api/menu';
 import { getMenuImage } from '@/components/menuImages';
+import Recmd from '@/components/recmdPopup.vue';
+import OrderCart from '@/components/orderCart.vue';
+import sttPanel from '@/stt/sttPanel.vue';
 
 const store = useOrderStore();
 const { totalPrice } = storeToRefs(store);
 
-const activeTab = ref();
-// activeTab.value = menuCategories.value[0]?.name ?? '';
-const recommendMenus = ref<MenuItem[]>([]);
+const activeTab = ref('커피');
 const menuCategories = ref<{ name: string; items: MenuItem[] }[]>([]);
-const showPopup = ref(false);
-
-let timer: number | null = null;
 
 const fPrice = (p: number) => p.toLocaleString('ko-KR');
 const addMenu = (menu: MenuItem) => store.addItem(menu);
-const closePopup = () => (showPopup.value = false);
 
 onMounted(async () => {
   try {
-    const [allMenus, popular] = await Promise.all([
-      getMenus(),
-      getPopularMenus(),
-    ]);
-    recommendMenus.value = popular;
-
-    // 카테고리별 그룹화
-    // const grouped: Record<string, MenuItem[]> = {};
-    // allMenus.forEach((m) => {
-    //   const list = grouped[m.category] ?? (grouped[m.category] = []);
-    //   list.push(m);
-    // });
+    const allMenus = await getMenus();
     const grouped = allMenus.reduce<Record<string, MenuItem[]>>((acc, menu) => {
       (acc[menu.category] ??= []).push(menu);
       return acc;
     }, {});
 
-    menuCategories.value = [
-      { name: '추천', items: recommendMenus.value },
-      ...Object.entries(grouped).map(([name, items]) => ({ name, items })),
-    ];
+    menuCategories.value = Object.entries(grouped).map(([name, items]) => ({
+      name,
+      items,
+    }));
   } catch (err) {
     console.error('메뉴 로딩 실패', err);
   }
-
-  showPopup.value = true;
-  timer = window.setTimeout(closePopup, 3000);
-});
-
-onBeforeUnmount(() => {
-  if (timer) clearTimeout(timer);
 });
 </script>
 
 <template>
   <div class="menu-page">
-    <!-- 추천 팝업 -->
-    <transition name="fade">
-      <div v-if="showPopup" class="popup-overlay">
-        <div class="popup-content">
-          <button class="popup-close" @click="closePopup">&times;</button>
-          <h2>추천 메뉴</h2>
-          <div class="menu-grid">
-            <button
-              v-for="item in recommendMenus"
-              :key="item.id"
-              class="menu-btn"
-              @click="addMenu(item)"
-            >
-              <img
-                :src="getMenuImage(item.id)"
-                :alt="item.name"
-                class="menu-img"
-              />
-              <div class="menu-info">
-                <span class="menu-name">{{ item.name }}</span
-                ><br />
-                <span class="menu-price">{{ fPrice(item.price) }}원</span>
-              </div>
-            </button>
-          </div>
-        </div>
-      </div>
-    </transition>
-
+    <Recmd />
     <h1>환영합니다, {{ store.customerName ?? store.carNum }}님!</h1>
     <nav class="category-tabs">
       <button
@@ -129,7 +78,7 @@ onBeforeUnmount(() => {
     <div class="order-summary">
       <h2>주문 내역</h2>
       <span class="total-price">합계: {{ fPrice(totalPrice) }}원</span>
-      <orderCart />
+      <OrderCart />
     </div>
 
     <div class="action-btn">
@@ -175,6 +124,7 @@ button {
   float: right;
   font-size: 1.5rem;
 }
+
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.4s;

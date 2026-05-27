@@ -1,11 +1,17 @@
 // 메뉴
+export interface MenuOption {
+  optionId: number;
+  optionType: string; // SIZE, TEMP, MILK ...
+  optionName: string; // Large, Ice ...
+  optionPrice: number;
+}
+
 export interface Menu {
   menuId: number;
   menuName: string;
   price: number;
   category: string;
-  caffeine: 'Y' | 'N';
-  temp: 'Hot' | 'Cold';
+  options: MenuOption[];
 }
 
 // 주문
