@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 우하단에 떠 있는 음성 상태 칩 — 듣는 중 / 인식한 문장 / 방금 담은 메뉴 표시.
+// 우하단에 떠 있는 음성 상태 칩 — Pi 마이크에서 들어온 마지막 발화/매칭 결과 표시.
 defineProps<{
   listening: boolean;
   transcript: string;
@@ -10,18 +10,13 @@ defineProps<{
 </script>
 
 <template>
-  <div
-    class="voice-chip"
-    :class="{ listening, err: !!error || !supported }"
-  >
-    <span class="voice-ico">{{ supported ? '🎤' : '🚫' }}</span>
+  <div class="voice-chip" :class="{ listening, err: !!error || !supported }">
+    <span class="voice-ico">🚗🎤</span>
     <div class="voice-body">
-      <div v-if="!supported || error" class="status fail">
-        {{ error || '음성 미지원' }}
-      </div>
+      <div v-if="error" class="status fail">{{ error }}</div>
       <template v-else>
         <div class="status">
-          {{ listening ? '말씀하세요…' : '대기 중' }}
+          {{ listening ? 'Pi 마이크 연결됨 — 차에서 말씀하세요' : '대기 중' }}
         </div>
         <div v-if="transcript" class="said">"{{ transcript }}"</div>
         <div v-if="lastMatch" class="matched">+ {{ lastMatch }}</div>

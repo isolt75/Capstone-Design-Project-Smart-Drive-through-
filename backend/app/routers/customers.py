@@ -26,6 +26,27 @@ def ocr_latest(db: Session = Depends(get_db)):
     return {"plate": ev.plate if ev else ""}
 
 
+@router.get("/voice/latest")
+def voice_latest(db: Session = Depends(get_db)):
+    """Pi 마이크 → Clova STT 로 들어온 가장 최근 voice_text.
+
+    키오스크가 2초 폴링 → event_id 가 바뀌면 새 발화로 보고 파싱+장바구니 반영.
+    """
+    ev = (
+        db.query(EdgeEvent)
+        .filter(EdgeEvent.voice_text.isnot(None))
+        .order_by(EdgeEvent.created_at.desc())
+        .first()
+    )
+    if ev is None:
+        return {"text": "", "event_id": "", "created_at": ""}
+    return {
+        "text": ev.voice_text or "",
+        "event_id": ev.event_id,
+        "created_at": ev.created_at.isoformat() if ev.created_at else "",
+    }
+
+
 @router.get("/customer")
 def get_customer(plate: str, db: Session = Depends(get_db)):
     """번호판으로 고객 조회. 신규면 {isNew:true}, 재방문이면 최근 주문 포함.
