@@ -121,7 +121,7 @@ onBeforeUnmount(() => {
           <h1 v-if="carNum" class="greet">
             <span class="plate-num">{{ carNum }}</span>님 환영합니다
           </h1>
-          <h1 v-else class="greet">오늘의 메뉴</h1>
+          <h1 v-else class="greet">IoT cafe</h1>
           <p v-if="customerName" class="sub-name">{{ customerName }}님</p>
           <p v-else-if="carNum" class="sub-name">차량 인식됨</p>
           <p v-else class="sub-name">차량 인식 대기 중…</p>
