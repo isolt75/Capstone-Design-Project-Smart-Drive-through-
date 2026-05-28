@@ -15,19 +15,21 @@ const store = useOrderStore();
 const { totalPrice, carNum, customerName } = storeToRefs(store);
 
 const activeTab = ref('추천');
-const allMenus = ref<MenuItem[]>([]);
 const menuCategories = ref<{ name: string; items: MenuItem[] }[]>([]);
+const lastMatch = ref<string | null>(null);
 
 const fPrice = (p: number) => p.toLocaleString('ko-KR');
 const addMenu = (menu: MenuItem) => store.addItem(menu);
 
-// 음성으로 들어온 매칭: 각 항목을 qty 번 만큼 담는다(기존 addItem 시그니처 재사용)
-const { supported, listening, transcript, lastMatch, error: voiceError } =
-  useVoiceOrder(allMenus, (matches) => {
-    for (const { menu, qty } of matches) {
-      for (let i = 0; i < qty; i++) store.addItem(menu);
+// 음성 인식 → 파싱·장바구니 반영은 모두 store.parseVoiceOrder 가 담당.
+const { supported, listening, transcript, error: voiceError } = useVoiceOrder(
+  (text) => {
+    const added = store.parseVoiceOrder(text);
+    if (added.length) {
+      lastMatch.value = added.map((a) => `${a.name} ×${a.qty}`).join(', ');
     }
-  });
+  },
+);
 
 onMounted(async () => {
   // 번호판 silent 조회 — 있으면 store.customerId 세팅(=상단 뒷자리 4자리 표시).
@@ -53,7 +55,8 @@ onMounted(async () => {
       getMenus(),
       getRecommendMenus(store.customerId).catch(() => getPopularMenus()),
     ]);
-    allMenus.value = menus;
+    // store 에 메뉴 사전 등록 — 음성 파서가 이 사전으로 매칭한다.
+    store.setMenus(menus);
 
     const grouped = menus.reduce<Record<string, MenuItem[]>>((acc, m) => {
       (acc[m.category] ??= []).push(m);

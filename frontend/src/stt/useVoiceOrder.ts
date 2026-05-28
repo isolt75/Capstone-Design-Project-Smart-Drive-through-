@@ -1,21 +1,13 @@
-// 브라우저 Web Speech API 를 켜둔 채 한국어 발화를 받아, parseOrder 로 음료+수량을
-// 뽑아내고 콜백으로 넘긴다. Chrome/Edge 에서만 동작 (Safari 미지원).
-//
-// onMounted 에서 자동 시작하고, onBeforeUnmount 에서 중단한다. Chrome 은 연속 모드라도
-// 가끔 onend 가 호출되어 끊기는데, listening 상태면 자동 재시작.
+// 브라우저 Web Speech API 항상 켜둠 컴포저블. 인식된 최종 문장을 콜백으로 넘기는 게 전부 —
+// 파싱·장바구니 반영은 호출 측(=store.parseVoiceOrder)이 책임진다.
+// Chrome/Edge 에서만 동작 (Safari 미지원).
 
-import { onBeforeUnmount, onMounted, ref, type Ref } from 'vue';
-import type { MenuItem } from '@/stores/store';
-import { parseOrder, type ParsedOrder } from './parseOrder';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 
-export function useVoiceOrder(
-  menus: Ref<MenuItem[]>,
-  onMatch: (results: ParsedOrder[], transcript: string) => void,
-) {
+export function useVoiceOrder(onFinal: (text: string) => void) {
   const supported = ref(true);
   const listening = ref(false);
   const transcript = ref('');
-  const lastMatch = ref<string | null>(null);
   const error = ref<string | null>(null);
 
   let recognition: any = null;
@@ -46,13 +38,7 @@ export function useVoiceOrder(
       }
       if (final) {
         transcript.value = final.trim();
-        const matches = parseOrder(final, menus.value);
-        if (matches.length) {
-          lastMatch.value = matches
-            .map((m) => `${m.menu.name} ×${m.qty}`)
-            .join(', ');
-          onMatch(matches, final);
-        }
+        onFinal(final);
       } else if (interim) {
         transcript.value = interim.trim();
       }
@@ -103,5 +89,5 @@ export function useVoiceOrder(
   onMounted(start);
   onBeforeUnmount(stop);
 
-  return { supported, listening, transcript, lastMatch, error, start, stop };
+  return { supported, listening, transcript, error, start, stop };
 }
