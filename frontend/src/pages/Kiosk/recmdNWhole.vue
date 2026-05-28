@@ -6,6 +6,7 @@ import { storeToRefs } from 'pinia';
 import { useOrderStore, type MenuItem } from '@/stores/store';
 import { getMenus, getPopularMenus, getRecommendMenus } from '@/api/menu';
 import { getPlate, getCustomer } from '@/api/customer';
+import { DEFAULT_MENUS } from '@/data/defaultMenus';
 import orderCart from '@/components/orderCart.vue';
 import voiceIndicator from '@/components/voiceIndicator.vue';
 import { getMenuImage } from '@/components/menuImages';
@@ -31,9 +32,29 @@ const { supported, listening, transcript, error: voiceError } = useVoiceOrder(
   },
 );
 
+function buildCategories(menus: MenuItem[], recommended: MenuItem[]) {
+  const grouped = menus.reduce<Record<string, MenuItem[]>>((acc, m) => {
+    (acc[m.category] ??= []).push(m);
+    return acc;
+  }, {});
+  return [
+    {
+      name: '추천',
+      items: recommended.length ? recommended : menus.slice(0, 3),
+    },
+    ...Object.entries(grouped).map(([name, items]) => ({ name, items })),
+  ];
+}
+
 onMounted(async () => {
-  // 번호판 silent 조회 — 있으면 store.customerId 세팅(=상단 뒷자리 4자리 표시).
-  // 환영 팝업은 더 이상 없음. 실패해도 메뉴 화면은 그대로 진행.
+  // 0) 즉시 DEFAULT_MENUS 로 화면을 채운다 — 백엔드/DB 상태와 무관하게
+  //    메뉴판이 빈 채로 보이는 일이 없도록.
+  store.setMenus(DEFAULT_MENUS);
+  menuCategories.value = buildCategories(DEFAULT_MENUS, DEFAULT_MENUS.slice(0, 3));
+  activeTab.value = menuCategories.value[0].name;
+
+  // 1) 번호판 silent 조회 — 있으면 store.customerId 세팅(=상단 뒷자리 4자리 표시).
+  //    실패는 무시(키오스크는 메뉴부터 그대로 진행).
   try {
     const plateRes = await getPlate();
     if (plateRes.plate) {
@@ -42,34 +63,33 @@ onMounted(async () => {
         const cust = await getCustomer(plateRes.plate);
         store.setCustomerInfo(cust);
       } catch {
-        /* 고객 조회 실패는 무시 — 번호판 뒷자리는 그대로 보임 */
+        /* 고객 조회 실패는 무시 */
       }
     }
   } catch (err) {
     console.warn('번호판 조회 실패 (백엔드 OCR 미준비?)', err);
   }
 
+  // 2) 백엔드 /menus 응답이 비어있지 않으면 그걸로 덮어쓴다(가격·메뉴 갱신 반영).
+  //    실패/빈응답이면 위 0번에서 깐 DEFAULT_MENUS 가 그대로 유지된다.
   try {
-    // 번호판이 잡혀 있으면 개인화, 아니면 시간대 인기로 폴백.
-    const [menus, recommended] = await Promise.all([
-      getMenus(),
-      getRecommendMenus(store.customerId).catch(() => getPopularMenus()),
-    ]);
-    // store 에 메뉴 사전 등록 — 음성 파서가 이 사전으로 매칭한다.
-    store.setMenus(menus);
-
-    const grouped = menus.reduce<Record<string, MenuItem[]>>((acc, m) => {
-      (acc[m.category] ??= []).push(m);
-      return acc;
-    }, {});
-
-    menuCategories.value = [
-      { name: '추천', items: recommended },
-      ...Object.entries(grouped).map(([name, items]) => ({ name, items })),
-    ];
-    activeTab.value = menuCategories.value[0]?.name ?? '추천';
+    const fetched = await getMenus();
+    if (fetched.length) {
+      store.setMenus(fetched);
+      let recommended: MenuItem[] = [];
+      try {
+        recommended = await getRecommendMenus(store.customerId);
+      } catch {
+        try {
+          recommended = await getPopularMenus();
+        } catch {
+          /* 추천 폴백 = 메뉴 앞 3개 */
+        }
+      }
+      menuCategories.value = buildCategories(fetched, recommended);
+    }
   } catch (err) {
-    console.error('메뉴 로딩 실패', err);
+    console.warn('백엔드 /menus 실패 → DEFAULT_MENUS 로 표시 중', err);
   }
 });
 </script>
