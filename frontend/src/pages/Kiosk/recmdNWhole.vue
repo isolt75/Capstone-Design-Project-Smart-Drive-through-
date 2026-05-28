@@ -5,13 +5,14 @@ import { ref, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useOrderStore, type MenuItem } from '@/stores/store';
 import { getMenus, getPopularMenus, getRecommendMenus } from '@/api/menu';
+import { getPlate, getCustomer } from '@/api/customer';
 import orderCart from '@/components/orderCart.vue';
 import voiceIndicator from '@/components/voiceIndicator.vue';
 import { getMenuImage } from '@/components/menuImages';
 import { useVoiceOrder } from '@/stt/useVoiceOrder';
 
 const store = useOrderStore();
-const { totalPrice } = storeToRefs(store);
+const { totalPrice, carNum, customerName } = storeToRefs(store);
 
 const activeTab = ref('추천');
 const allMenus = ref<MenuItem[]>([]);
@@ -29,6 +30,23 @@ const { supported, listening, transcript, lastMatch, error: voiceError } =
   });
 
 onMounted(async () => {
+  // 번호판 silent 조회 — 있으면 store.customerId 세팅(=상단 뒷자리 4자리 표시).
+  // 환영 팝업은 더 이상 없음. 실패해도 메뉴 화면은 그대로 진행.
+  try {
+    const plateRes = await getPlate();
+    if (plateRes.plate) {
+      store.setCustomer(plateRes.plate);
+      try {
+        const cust = await getCustomer(plateRes.plate);
+        store.setCustomerInfo(cust);
+      } catch {
+        /* 고객 조회 실패는 무시 — 번호판 뒷자리는 그대로 보임 */
+      }
+    }
+  } catch (err) {
+    console.warn('번호판 조회 실패 (백엔드 OCR 미준비?)', err);
+  }
+
   try {
     // 번호판이 잡혀 있으면 개인화, 아니면 시간대 인기로 폴백.
     const [menus, recommended] = await Promise.all([
@@ -60,8 +78,15 @@ onMounted(async () => {
         <span class="logo">☕</span>
         <h1>오늘의 메뉴</h1>
       </div>
-      <div class="total-chip">
-        합계 <strong>{{ fPrice(totalPrice) }}원</strong>
+      <div class="right-cluster">
+        <span v-if="carNum" class="plate-chip" :title="customerName ?? ''">
+          <span class="plate-tag">차량</span>
+          ····{{ carNum }}
+          <span v-if="customerName" class="plate-name">{{ customerName }}님</span>
+        </span>
+        <div class="total-chip">
+          합계 <strong>{{ fPrice(totalPrice) }}원</strong>
+        </div>
       </div>
     </header>
 
@@ -156,6 +181,41 @@ onMounted(async () => {
   margin: 0;
   font-size: 1.8rem;
   font-weight: 700;
+}
+.right-cluster {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.plate-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  border: 1px solid var(--primary);
+  color: var(--primary-strong);
+  font-size: 0.95rem;
+  font-weight: 700;
+  white-space: nowrap;
+  letter-spacing: 0.05em;
+}
+.plate-tag {
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  background: var(--primary);
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.plate-name {
+  margin-left: 4px;
+  color: var(--text);
+  font-weight: 600;
+  letter-spacing: 0;
 }
 .total-chip {
   padding: 10px 18px;
