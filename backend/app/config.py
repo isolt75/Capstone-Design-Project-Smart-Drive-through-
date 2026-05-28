@@ -29,6 +29,12 @@ class Settings(BaseSettings):
     clova_secret_key: str = ""
     clova_language: str = "Kor"
 
+    # --- 신선도 윈도우 ---
+    # /ocr/latest, /voice/latest 가 이 시간(초) 안의 이벤트만 "현재 차량"으로 본다.
+    # 지나면 빈 응답 → 키오스크 헤더가 "IoT cafe" 로 되돌아감.
+    # Pi 가 VEHICLE_DEPARTED 를 백엔드로 보내지 않는 PoC 단계에선 이게 가장 단순한 방법.
+    edge_event_freshness_sec: int = 60
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

@@ -38,14 +38,24 @@ async function refreshPlate() {
   try {
     const { plate } = await getPlate();
     const current = store.customerId;
-    if (!plate || plate === current) return;
+    const next = plate || null;
 
-    // 새 차량 — 이전 손님 카트/이름/주문번호 비우고 신규로 갱신.
-    // 첫 진입(current 없음)은 clear 불필요.
+    // 같으면 no-op (둘 다 null 인 idle 상태 포함)
+    if (next === current) return;
+
+    // 신선한 차량이 사라짐 (freshness 만료) — 헤더만 'IoT cafe'로 되돌림.
+    // 카트·주문 정보는 손님이 마저 주문할 수 있게 보존.
+    if (!next && current) {
+      store.customerId = null;
+      store.customerName = null;
+      return;
+    }
+
+    // 새 차량 진입 (또는 다른 차량으로 교체) — 이전 손님 카트 비우고 갱신
     if (current) store.clear();
-    store.setCustomer(plate);
+    store.setCustomer(next!);
     try {
-      const cust = await getCustomer(plate);
+      const cust = await getCustomer(next!);
       store.setCustomerInfo(cust);
     } catch {
       /* 고객 조회 실패는 무시 — 뒷자리 4자리는 여전히 표시됨 */

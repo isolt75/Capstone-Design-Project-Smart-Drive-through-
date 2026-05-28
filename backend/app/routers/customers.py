@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
+
 from fastapi import APIRouter, Depends
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.db import get_db
 from app.models import Cust, EdgeEvent
 from app.services import recommend as rec
@@ -14,12 +17,18 @@ from app.services.plate import normalize
 router = APIRouter(prefix="/api", tags=["customers"])
 
 
+def _freshness_cutoff() -> datetime:
+    """이 시간 이후에 들어온 이벤트만 '현재 차량'으로 본다."""
+    return datetime.now() - timedelta(seconds=settings.edge_event_freshness_sec)
+
+
 @router.get("/ocr/latest")
 def ocr_latest(db: Session = Depends(get_db)):
-    """엣지가 보낸 가장 최근 차량 진입 이벤트의 번호판."""
+    """가장 최근 차량 진입 이벤트의 번호판. freshness 윈도우 지나면 빈 응답."""
     ev = (
         db.query(EdgeEvent)
         .filter(EdgeEvent.plate.isnot(None))
+        .filter(EdgeEvent.created_at >= _freshness_cutoff())
         .order_by(EdgeEvent.created_at.desc())
         .first()
     )
@@ -28,13 +37,11 @@ def ocr_latest(db: Session = Depends(get_db)):
 
 @router.get("/voice/latest")
 def voice_latest(db: Session = Depends(get_db)):
-    """Pi 마이크 → Clova STT 로 들어온 가장 최근 voice_text.
-
-    키오스크가 2초 폴링 → event_id 가 바뀌면 새 발화로 보고 파싱+장바구니 반영.
-    """
+    """Pi 마이크 → Clova STT 로 들어온 가장 최근 voice_text. freshness 윈도우 적용."""
     ev = (
         db.query(EdgeEvent)
         .filter(EdgeEvent.voice_text.isnot(None))
+        .filter(EdgeEvent.created_at >= _freshness_cutoff())
         .order_by(EdgeEvent.created_at.desc())
         .first()
     )
