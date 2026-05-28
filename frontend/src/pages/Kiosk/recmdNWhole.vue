@@ -1,107 +1,70 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue';
+// 키오스크 첫 화면 = 전체 메뉴 그리드. 더 이상 환영/추천 팝업 없음.
+// 음성은 진입 즉시 항상 켜져 있고, 말하면 NLU 가 음료+수량을 뽑아 장바구니에 자동 담음.
+import { ref, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useOrderStore, type MenuItem } from '@/stores/store';
 import { getMenus, getPopularMenus, getRecommendMenus } from '@/api/menu';
 import orderCart from '@/components/orderCart.vue';
-import sttPanel from '@/stt/sttPanel.vue';
+import voiceIndicator from '@/components/voiceIndicator.vue';
 import { getMenuImage } from '@/components/menuImages';
+import { useVoiceOrder } from '@/stt/useVoiceOrder';
 
 const store = useOrderStore();
 const { totalPrice } = storeToRefs(store);
 
-const activeTab = ref();
-// activeTab.value = menuCategories.value[0]?.name ?? '';
-const recommendMenus = ref<MenuItem[]>([]);
+const activeTab = ref('추천');
+const allMenus = ref<MenuItem[]>([]);
 const menuCategories = ref<{ name: string; items: MenuItem[] }[]>([]);
-const showPopup = ref(false);
-
-let timer: number | null = null;
 
 const fPrice = (p: number) => p.toLocaleString('ko-KR');
 const addMenu = (menu: MenuItem) => store.addItem(menu);
-const closePopup = () => (showPopup.value = false);
+
+// 음성으로 들어온 매칭: 각 항목을 qty 번 만큼 담는다(기존 addItem 시그니처 재사용)
+const { supported, listening, transcript, lastMatch, error: voiceError } =
+  useVoiceOrder(allMenus, (matches) => {
+    for (const { menu, qty } of matches) {
+      for (let i = 0; i < qty; i++) store.addItem(menu);
+    }
+  });
 
 onMounted(async () => {
   try {
-    // 재방문 고객(번호판 보유)이면 개인화 추천, 아니면 시간대 인기.
-    // /recommend 실패 시 /popular 로 폴백.
-    const [allMenus, recommended] = await Promise.all([
+    // 번호판이 잡혀 있으면 개인화, 아니면 시간대 인기로 폴백.
+    const [menus, recommended] = await Promise.all([
       getMenus(),
       getRecommendMenus(store.customerId).catch(() => getPopularMenus()),
     ]);
-    recommendMenus.value = recommended;
+    allMenus.value = menus;
 
-    const grouped = allMenus.reduce<Record<string, MenuItem[]>>((acc, menu) => {
-      (acc[menu.category] ??= []).push(menu);
+    const grouped = menus.reduce<Record<string, MenuItem[]>>((acc, m) => {
+      (acc[m.category] ??= []).push(m);
       return acc;
     }, {});
 
     menuCategories.value = [
-      { name: '추천', items: recommendMenus.value },
+      { name: '추천', items: recommended },
       ...Object.entries(grouped).map(([name, items]) => ({ name, items })),
     ];
     activeTab.value = menuCategories.value[0]?.name ?? '추천';
   } catch (err) {
     console.error('메뉴 로딩 실패', err);
   }
-
-  showPopup.value = true;
-  timer = window.setTimeout(closePopup, 3000);
-});
-
-onBeforeUnmount(() => {
-  if (timer) clearTimeout(timer);
 });
 </script>
 
 <template>
   <div class="menu-page">
-    <!-- 추천 팝업 -->
-    <transition name="fade">
-      <div v-if="showPopup" class="popup-overlay" @click.self="closePopup">
-        <div class="popup-content">
-          <div class="popup-head">
-            <div>
-              <p class="popup-eyebrow">{{ store.customerName ?? store.carNum }}님을 위한</p>
-              <h2>추천 메뉴</h2>
-            </div>
-            <button class="popup-close" @click="closePopup">&times;</button>
-          </div>
-          <div class="menu-grid">
-            <button
-              v-for="item in recommendMenus"
-              :key="item.id"
-              class="menu-btn"
-              @click="addMenu(item)"
-            >
-              <span class="badge-reco">추천</span>
-              <img :src="getMenuImage(item.id)" :alt="item.name" class="menu-img" />
-              <div class="menu-info">
-                <span class="menu-name">{{ item.name }}</span>
-                <span class="menu-price">{{ fPrice(item.price) }}원</span>
-              </div>
-            </button>
-          </div>
-        </div>
-      </div>
-    </transition>
-
-    <!-- 헤더 -->
     <header class="topbar">
-      <div class="greet">
-        <span class="greet-emoji">☕</span>
-        <div>
-          <p class="greet-sub">환영합니다</p>
-          <h1 class="greet-name">{{ store.customerName ?? store.carNum }}님</h1>
-        </div>
+      <div class="title">
+        <span class="logo">☕</span>
+        <h1>오늘의 메뉴</h1>
       </div>
       <div class="total-chip">
         합계 <strong>{{ fPrice(totalPrice) }}원</strong>
       </div>
     </header>
 
-    <!-- 카테고리 탭 -->
     <nav class="category-tabs">
       <button
         v-for="cat in menuCategories"
@@ -113,7 +76,6 @@ onBeforeUnmount(() => {
       </button>
     </nav>
 
-    <!-- 메뉴 -->
     <main class="menu-content">
       <section v-for="category in menuCategories" :key="category.name">
         <div v-if="activeTab === category.name" class="menu-grid">
@@ -135,10 +97,6 @@ onBeforeUnmount(() => {
       </section>
     </main>
 
-    <!-- 음성 주문 패널 -->
-    <sttPanel />
-
-    <!-- 주문 내역 -->
     <section class="order-summary">
       <div class="summary-head">
         <h2>주문 내역</h2>
@@ -147,13 +105,19 @@ onBeforeUnmount(() => {
       <orderCart />
     </section>
 
-    <!-- 액션 -->
     <div class="action-bar">
-      <button class="btn-ghost" @click="$router.push('/voice')">🎤 음성 주문</button>
       <button class="btn-primary" @click="$router.push('/confirm')">
         주문 완료 ▸
       </button>
     </div>
+
+    <voiceIndicator
+      :listening="listening"
+      :transcript="transcript"
+      :last-match="lastMatch"
+      :error="voiceError"
+      :supported="supported"
+    />
   </div>
 </template>
 
@@ -167,19 +131,18 @@ onBeforeUnmount(() => {
   gap: 18px;
 }
 
-/* ── 헤더 ── */
 .topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
 }
-.greet {
+.title {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
 }
-.greet-emoji {
+.logo {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -189,14 +152,9 @@ onBeforeUnmount(() => {
   background: var(--primary-soft);
   font-size: 1.6rem;
 }
-.greet-sub {
+.title h1 {
   margin: 0;
-  font-size: 0.95rem;
-  color: var(--text-muted);
-}
-.greet-name {
-  margin: 2px 0 0;
-  font-size: 1.6rem;
+  font-size: 1.8rem;
   font-weight: 700;
 }
 .total-chip {
@@ -214,7 +172,6 @@ onBeforeUnmount(() => {
   color: var(--primary-strong);
 }
 
-/* ── 탭 ── */
 .category-tabs {
   display: flex;
   gap: 10px;
@@ -240,7 +197,6 @@ onBeforeUnmount(() => {
   box-shadow: 0 6px 16px rgba(232, 132, 58, 0.35);
 }
 
-/* ── 메뉴 그리드 ── */
 .menu-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -303,7 +259,6 @@ onBeforeUnmount(() => {
   font-weight: 700;
 }
 
-/* ── 주문 내역 ── */
 .order-summary {
   padding: 18px;
   border-radius: var(--radius);
@@ -325,7 +280,6 @@ onBeforeUnmount(() => {
   color: var(--primary-strong);
 }
 
-/* ── 액션 바 (하단 고정) ── */
 .action-bar {
   position: fixed;
   left: 50%;
@@ -338,79 +292,15 @@ onBeforeUnmount(() => {
   padding: 14px 20px calc(14px + env(safe-area-inset-bottom));
   background: linear-gradient(to top, var(--bg) 70%, transparent);
 }
-.action-bar button {
+.btn-primary {
   flex: 1;
   padding: 18px;
   border-radius: 14px;
   font-size: 1.2rem;
   font-weight: 700;
-}
-.btn-ghost {
-  flex: 0 0 38% !important;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text);
-}
-.btn-primary {
   background: var(--primary);
   color: #fff;
   box-shadow: 0 8px 20px rgba(232, 132, 58, 0.4);
-}
-
-/* ── 추천 팝업 ── */
-.popup-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(42, 37, 33, 0.45);
-  backdrop-filter: blur(2px);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 999;
-  padding: 20px;
-}
-.popup-content {
-  width: 100%;
-  max-width: 640px;
-  max-height: 82vh;
-  padding: 24px;
-  border-radius: 24px;
-  background: var(--surface);
-  box-shadow: var(--shadow);
-  overflow-y: auto;
-}
-.popup-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 18px;
-}
-.popup-eyebrow {
-  margin: 0 0 2px;
-  font-size: 0.95rem;
-  color: var(--primary-strong);
-  font-weight: 600;
-}
-.popup-head h2 {
-  margin: 0;
-  font-size: 1.7rem;
-}
-.popup-close {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: var(--surface-2);
-  font-size: 1.4rem;
-  color: var(--text-muted);
-  line-height: 1;
-}
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
 }
 
 @media (max-width: 600px) {
