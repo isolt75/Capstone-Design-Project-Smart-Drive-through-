@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // 키오스크 첫 화면 = 전체 메뉴 그리드. 더 이상 환영/추천 팝업 없음.
 // 음성은 진입 즉시 항상 켜져 있고, 말하면 NLU 가 음료+수량을 뽑아 장바구니에 자동 담음.
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useOrderStore, type MenuItem } from '@/stores/store';
 import { getMenus, getPopularMenus, getRecommendMenus } from '@/api/menu';
@@ -32,6 +32,29 @@ const { supported, listening, transcript, error: voiceError } = useVoiceOrder(
   },
 );
 
+let platePoll: number | null = null;
+
+async function refreshPlate() {
+  try {
+    const { plate } = await getPlate();
+    const current = store.customerId;
+    if (!plate || plate === current) return;
+
+    // 새 차량 — 이전 손님 카트/이름/주문번호 비우고 신규로 갱신.
+    // 첫 진입(current 없음)은 clear 불필요.
+    if (current) store.clear();
+    store.setCustomer(plate);
+    try {
+      const cust = await getCustomer(plate);
+      store.setCustomerInfo(cust);
+    } catch {
+      /* 고객 조회 실패는 무시 — 뒷자리 4자리는 여전히 표시됨 */
+    }
+  } catch {
+    /* 백엔드 잠깐 끊김 등은 다음 폴링에서 다시 시도 */
+  }
+}
+
 function buildCategories(menus: MenuItem[], recommended: MenuItem[]) {
   const grouped = menus.reduce<Record<string, MenuItem[]>>((acc, m) => {
     (acc[m.category] ??= []).push(m);
@@ -53,22 +76,10 @@ onMounted(async () => {
   menuCategories.value = buildCategories(DEFAULT_MENUS, DEFAULT_MENUS.slice(0, 3));
   activeTab.value = menuCategories.value[0].name;
 
-  // 1) 번호판 silent 조회 — 있으면 store.customerId 세팅(=상단 뒷자리 4자리 표시).
-  //    실패는 무시(키오스크는 메뉴부터 그대로 진행).
-  try {
-    const plateRes = await getPlate();
-    if (plateRes.plate) {
-      store.setCustomer(plateRes.plate);
-      try {
-        const cust = await getCustomer(plateRes.plate);
-        store.setCustomerInfo(cust);
-      } catch {
-        /* 고객 조회 실패는 무시 */
-      }
-    }
-  } catch (err) {
-    console.warn('번호판 조회 실패 (백엔드 OCR 미준비?)', err);
-  }
+  // 1) 번호판 폴링 — 2초마다 /ocr/latest 확인. 새 차량이면 이전 카트 비우고 갱신.
+  //    Pi 가 vehicle-entry 를 보내자마자 키오스크 상단에 "0000님 환영합니다" 가 즉시 뜨도록.
+  await refreshPlate();
+  platePoll = window.setInterval(refreshPlate, 2000);
 
   // 2) 백엔드 /menus 응답이 비어있지 않으면 그걸로 덮어쓴다(가격·메뉴 갱신 반영).
   //    실패/빈응답이면 위 0번에서 깐 DEFAULT_MENUS 가 그대로 유지된다.
@@ -92,6 +103,13 @@ onMounted(async () => {
     console.warn('백엔드 /menus 실패 → DEFAULT_MENUS 로 표시 중', err);
   }
 });
+
+onBeforeUnmount(() => {
+  if (platePoll) {
+    window.clearInterval(platePoll);
+    platePoll = null;
+  }
+});
 </script>
 
 <template>
@@ -99,17 +117,18 @@ onMounted(async () => {
     <header class="topbar">
       <div class="title">
         <span class="logo">☕</span>
-        <h1>오늘의 메뉴</h1>
-      </div>
-      <div class="right-cluster">
-        <span v-if="carNum" class="plate-chip" :title="customerName ?? ''">
-          <span class="plate-tag">차량</span>
-          ····{{ carNum }}
-          <span v-if="customerName" class="plate-name">{{ customerName }}님</span>
-        </span>
-        <div class="total-chip">
-          합계 <strong>{{ fPrice(totalPrice) }}원</strong>
+        <div class="title-text">
+          <h1 v-if="carNum" class="greet">
+            <span class="plate-num">{{ carNum }}</span>님 환영합니다
+          </h1>
+          <h1 v-else class="greet">오늘의 메뉴</h1>
+          <p v-if="customerName" class="sub-name">{{ customerName }}님</p>
+          <p v-else-if="carNum" class="sub-name">차량 인식됨</p>
+          <p v-else class="sub-name">차량 인식 대기 중…</p>
         </div>
+      </div>
+      <div class="total-chip">
+        합계 <strong>{{ fPrice(totalPrice) }}원</strong>
       </div>
     </header>
 
@@ -200,45 +219,34 @@ onMounted(async () => {
   background: var(--primary-soft);
   font-size: 1.6rem;
 }
-.title h1 {
-  margin: 0;
-  font-size: 1.8rem;
-  font-weight: 700;
-}
-.right-cluster {
+.title-text {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  flex-direction: column;
+  gap: 2px;
 }
-.plate-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 14px;
-  border-radius: 999px;
-  background: var(--primary-soft);
-  border: 1px solid var(--primary);
-  color: var(--primary-strong);
-  font-size: 0.95rem;
+.greet {
+  margin: 0;
+  font-size: 1.7rem;
   font-weight: 700;
-  white-space: nowrap;
-  letter-spacing: 0.05em;
-}
-.plate-tag {
-  font-size: 0.7rem;
-  letter-spacing: 0.15em;
-  background: var(--primary);
-  color: #fff;
-  padding: 2px 8px;
-  border-radius: 999px;
-}
-.plate-name {
-  margin-left: 4px;
   color: var(--text);
+  line-height: 1.1;
+}
+.plate-num {
+  color: var(--primary-strong);
+  font-size: 2.1rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  margin-right: 4px;
+  background: linear-gradient(180deg, var(--primary), var(--primary-strong));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.sub-name {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
   font-weight: 600;
-  letter-spacing: 0;
 }
 .total-chip {
   padding: 10px 18px;
