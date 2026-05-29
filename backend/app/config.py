@@ -29,6 +29,13 @@ class Settings(BaseSettings):
     clova_secret_key: str = ""
     clova_language: str = "Kor"
 
+    # --- Clova Studio (HyperCLOVA X, 추천 LLM) ---
+    # STT 와는 별개 제품/키. 비어 있으면 추천이 DB 휴리스틱으로 폴백된다.
+    clova_studio_api_key: str = ""
+    clova_studio_url: str = (
+        "https://clovastudio.stream.ntruss.com/testapp/v1/chat-completions/HCX-003"
+    )
+
     # --- 신선도 윈도우 ---
     # /ocr/latest, /voice/latest 가 이 시간(초) 안의 이벤트만 "현재 차량"으로 본다.
     # 지나면 빈 응답 → 키오스크 헤더가 "IoT cafe" 로 되돌아감.
