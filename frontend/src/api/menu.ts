@@ -3,12 +3,13 @@ import type { Menu } from './dtApi';
 import type { MenuItem } from '@/stores/store';
 import { getMenuImage } from '@/components/menuImages';
 
-const toMenuItem = ({ menuId, menuName, price, category }: Menu): MenuItem => ({
+const toMenuItem = ({ menuId, menuName, price, category, cafYn }: Menu): MenuItem => ({
   id: menuId,
   name: menuName,
   price: price,
   category: category,
   image: getMenuImage(menuId),
+  caffeine: cafYn === 'Y', // 'Y'/'N' → boolean (음성 '카페인 없는 음료' 필터용)
   quantity: 1,
 });
 

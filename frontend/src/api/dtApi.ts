@@ -1,11 +1,10 @@
-// 메뉴
+// 메뉴 (백엔드 Menu.as_dict() 와 1:1)
 export interface Menu {
   menuId: number;
   menuName: string;
   price: number;
   category: string;
-  caffeine: 'Y' | 'N';
-  temp: 'Hot' | 'Cold';
+  cafYn: 'Y' | 'N'; // 카페인 함유 여부
 }
 
 // 주문

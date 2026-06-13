@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from app.config import settings
 from app.db import engine
 from app.models import Base
-from app.routers import customers, edge, menus, orders, stt
+from app.routers import customers, edge, menus, orders, stt, ws
 
 
 class UnicodeJSONResponse(JSONResponse):
@@ -62,3 +62,4 @@ app.include_router(orders.router)
 app.include_router(customers.router)
 app.include_router(stt.router)
 app.include_router(edge.router)
+app.include_router(ws.router)

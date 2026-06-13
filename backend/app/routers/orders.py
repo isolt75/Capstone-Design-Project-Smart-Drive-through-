@@ -12,8 +12,35 @@ from app.db import get_db
 from app.models import Cust, Menu, Odr
 from app.schemas import OrderRequestIn
 from app.services.plate import normalize
+from app.services.ws_manager import staff_hub
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
+
+
+def _waiting_payload(db: Session) -> list[dict]:
+    """대기(WAITING) 주문을 묶음별로 그룹핑해 직원 화면 형식으로 반환.
+
+    GET /waiting 응답과 WebSocket 푸시가 같은 형식을 쓰도록 공용 헬퍼로 둔다.
+    """
+    rows = (
+        db.query(Odr, Menu, Cust)
+        .join(Menu, Menu.menu_num == Odr.menu_num)
+        .join(Cust, Cust.cust_num == Odr.cust_num)
+        .filter(Odr.odr_status == "WAITING")
+        .order_by(Odr.odr_grp, Odr.odr_num)
+        .all()
+    )
+
+    grouped: dict[str, dict] = {}
+    for odr, menu, cust in rows:
+        order = grouped.setdefault(
+            odr.odr_grp,
+            {"orderNum": odr.odr_grp, "customerId": cust.car_num, "items": []},
+        )
+        order["items"].append(
+            {"id": menu.menu_num, "name": menu.menu_nm, "quantity": odr.menu_cnt}
+        )
+    return list(grouped.values())
 
 
 def _next_order_no(db: Session, now: datetime) -> str:
@@ -66,6 +93,9 @@ def create_order(req: OrderRequestIn, db: Session = Depends(get_db)):
 
     db.commit()
 
+    # 새 주문을 직원 화면에 즉시 push(갱신된 대기열 전체 전송).
+    staff_hub.notify({"type": "waiting", "orders": _waiting_payload(db)})
+
     return {
         "success": True,
         "customerId": cust.cust_num,
@@ -79,25 +109,7 @@ def create_order(req: OrderRequestIn, db: Session = Depends(get_db)):
 @router.get("/waiting")
 def waiting_orders(db: Session = Depends(get_db)):
     """대기(WAITING) 주문을 묶음별로 그룹핑해 직원 화면 형식으로 반환."""
-    rows = (
-        db.query(Odr, Menu, Cust)
-        .join(Menu, Menu.menu_num == Odr.menu_num)
-        .join(Cust, Cust.cust_num == Odr.cust_num)
-        .filter(Odr.odr_status == "WAITING")
-        .order_by(Odr.odr_grp, Odr.odr_num)
-        .all()
-    )
-
-    grouped: dict[str, dict] = {}
-    for odr, menu, cust in rows:
-        order = grouped.setdefault(
-            odr.odr_grp,
-            {"orderNum": odr.odr_grp, "customerId": cust.car_num, "items": []},
-        )
-        order["items"].append(
-            {"id": menu.menu_num, "name": menu.menu_nm, "quantity": odr.menu_cnt}
-        )
-    return list(grouped.values())
+    return _waiting_payload(db)
 
 
 @router.post("/{order_no}/done")
@@ -109,4 +121,8 @@ def complete_order(order_no: str, db: Session = Depends(get_db)):
         .update({Odr.odr_status: "DONE"})
     )
     db.commit()
+
+    # 완료 처리도 모든 직원 화면에 즉시 반영(여러 화면 동기화).
+    staff_hub.notify({"type": "waiting", "orders": _waiting_payload(db)})
+
     return {"success": True, "updated": updated}

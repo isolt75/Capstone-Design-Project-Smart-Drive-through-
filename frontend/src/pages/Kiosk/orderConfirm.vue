@@ -82,7 +82,7 @@ onMounted(() => {
 .btn-group button {
   flex: 1;
   padding: 18px;
-  border-radius: 14px;
+  border-radius: var(--radius-btn);
   font-size: 1.2rem;
   font-weight: 700;
 }
@@ -95,6 +95,6 @@ onMounted(() => {
 .btn-primary {
   background: var(--primary);
   color: #fff;
-  box-shadow: 0 8px 20px rgba(232, 132, 58, 0.4);
+  box-shadow: var(--shadow-primary);
 }
 </style>

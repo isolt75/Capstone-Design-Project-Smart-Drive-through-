@@ -112,7 +112,7 @@ const remove = (id: number) => store.removeItem(id);
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: #fbe7e3;
+  background: var(--danger-soft);
   color: var(--danger);
   font-size: 1.2rem;
   line-height: 1;

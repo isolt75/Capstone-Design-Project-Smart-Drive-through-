@@ -5,6 +5,13 @@ import axios from 'axios';
 const baseURL =
   import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 
+// WebSocket 주소. baseURL(http(s)://host[/api]) 에서 '/api' 를 떼고 http→ws 로 바꾼다.
+// 예: http://localhost:8000/api + '/ws/staff' → ws://localhost:8000/ws/staff
+export const wsURL = (path: string): string => {
+  const origin = baseURL.replace(/\/api\/?$/, '');
+  return `${origin.replace(/^http/, 'ws')}${path}`;
+};
+
 const api = axios.create({
   baseURL,
   timeout: 10000,

@@ -22,13 +22,49 @@ const lastMatch = ref<string | null>(null);
 const fPrice = (p: number) => p.toLocaleString('ko-KR');
 const addMenu = (menu: MenuItem) => store.addItem(menu);
 
+// "카페인 없는 음료 주세요" 류 발화 감지 (디카페인/논카페인 포함).
+function isDecafRequest(text: string): boolean {
+  const c = text.replace(/\s+/g, '');
+  if (c.includes('디카페인') || c.includes('논카페인') || c.includes('카페인프리'))
+    return true;
+  return c.includes('카페인') && /없|안|빼|뺀|제외|적은/.test(c);
+}
+
+// 디카페인 메뉴 정렬 우선순위 — 에이드/주스를 먼저 보여줘 '에이드 같은' 게 뜨도록.
+function decafRank(m: MenuItem): number {
+  if (m.category.includes('에이드') || m.category.includes('주스')) return 0;
+  if (m.category.includes('블렌디드')) return 1;
+  return 2;
+}
+
+// 추천 탭을 카페인 없는 음료로 교체하고 그 탭으로 전환.
+function applyDecafRecommendation() {
+  const decaf = (store.availableMenus ?? []).filter((m) => m.caffeine === false);
+  if (!decaf.length) {
+    lastMatch.value = '카페인 없는 음료가 없어요';
+    return;
+  }
+  const items = [...decaf].sort((a, b) => decafRank(a) - decafRank(b)).slice(0, 3);
+  const reco = menuCategories.value.find((c) => c.name === '추천');
+  if (reco) reco.items = items;
+  activeTab.value = '추천';
+  lastMatch.value = '☕ 카페인 없는 음료로 추천을 바꿨어요';
+}
+
 // 음성 인식 → 파싱·장바구니 반영은 모두 store.parseVoiceOrder 가 담당.
 const { supported, listening, transcript, error: voiceError } = useVoiceOrder(
   (text) => {
-    const added = store.parseVoiceOrder(text);
-    if (added.length) {
-      lastMatch.value = added.map((a) => `${a.name} ×${a.qty}`).join(', ');
+    // 카페인 없는 음료 추천 요청이면 추천 목록만 바꾸고 끝(장바구니 변경 X).
+    if (isDecafRequest(text)) {
+      applyDecafRecommendation();
+      return;
     }
+    const { added, removed, cleared } = store.parseVoiceOrder(text);
+    const parts: string[] = [];
+    if (cleared) parts.push('🗑 장바구니 비움');
+    if (removed.length) parts.push(...removed.map((n) => `${n} 뺌`));
+    if (added.length) parts.push(...added.map((a) => `${a.name} ×${a.qty}`));
+    if (parts.length) lastMatch.value = parts.join(', ');
   },
 );
 
@@ -84,7 +120,7 @@ onMounted(async () => {
   //    메뉴판이 빈 채로 보이는 일이 없도록.
   store.setMenus(DEFAULT_MENUS);
   menuCategories.value = buildCategories(DEFAULT_MENUS, DEFAULT_MENUS.slice(0, 3));
-  activeTab.value = menuCategories.value[0].name;
+  activeTab.value = menuCategories.value[0]?.name ?? '추천';
 
   // 1) 번호판 폴링 — 2초마다 /ocr/latest 확인. 새 차량이면 이전 카트 비우고 갱신.
   //    Pi 가 vehicle-entry 를 보내자마자 키오스크 상단에 "0000님 환영합니다" 가 즉시 뜨도록.
@@ -295,7 +331,7 @@ onBeforeUnmount(() => {
   background: var(--primary);
   border-color: var(--primary);
   color: #fff;
-  box-shadow: 0 6px 16px rgba(232, 132, 58, 0.35);
+  box-shadow: var(--shadow-tab);
 }
 
 .menu-grid {
@@ -396,12 +432,12 @@ onBeforeUnmount(() => {
 .btn-primary {
   flex: 1;
   padding: 18px;
-  border-radius: 14px;
+  border-radius: var(--radius-btn);
   font-size: 1.2rem;
   font-weight: 700;
   background: var(--primary);
   color: #fff;
-  box-shadow: 0 8px 20px rgba(232, 132, 58, 0.4);
+  box-shadow: var(--shadow-primary);
 }
 
 @media (max-width: 600px) {

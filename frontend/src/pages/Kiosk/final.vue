@@ -69,7 +69,7 @@ onMounted(async () => {
 
   timeout = window.setTimeout(() => {
     // store.clear();
-    router.push('/pos');
+    router.push('/');
   }, 5000);
 });
 
@@ -124,7 +124,7 @@ onBeforeUnmount(() => {
   width: 100%;
   max-width: 520px;
   padding: 48px 32px;
-  border-radius: 28px;
+  border-radius: var(--radius-lg);
   background: var(--surface);
   box-shadow: var(--shadow);
   text-align: center;
@@ -142,12 +142,12 @@ onBeforeUnmount(() => {
   color: #fff;
   font-size: 3rem;
   font-weight: 700;
-  box-shadow: 0 12px 28px rgba(232, 132, 58, 0.4);
+  box-shadow: var(--shadow-primary-lg);
   animation: pop 0.4s ease;
 }
 .err-mark {
   background: var(--danger);
-  box-shadow: 0 12px 28px rgba(226, 109, 92, 0.4);
+  box-shadow: var(--shadow-danger-lg);
 }
 
 .complete-card h1 {
@@ -193,7 +193,7 @@ onBeforeUnmount(() => {
 .home {
   width: 100%;
   padding: 16px;
-  border-radius: 14px;
+  border-radius: var(--radius-btn);
   background: var(--surface);
   border: 1px solid var(--border);
   color: var(--text);
