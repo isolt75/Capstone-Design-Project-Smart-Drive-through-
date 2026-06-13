@@ -39,7 +39,7 @@ onMounted(async () => {
     store.orderNum = data.orderNumber;
     if (data.success) {
       store.saveCompletedOrder();
-      console.log('completedOrders:', store.completedOrders);
+      store.clearCart(); // 무터치 반복 대비 — 제출 후 장바구니 비움(고객/번호판은 유지)
     } else {
       error.value = '주문 처리에 실패했습니다.';
       return;

@@ -2,6 +2,7 @@
 // 키오스크 첫 화면 = 전체 메뉴 그리드. 더 이상 환영/추천 팝업 없음.
 // 음성은 진입 즉시 항상 켜져 있고, 말하면 NLU 가 음료+수량을 뽑아 장바구니에 자동 담음.
 import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useOrderStore, type MenuItem } from '@/stores/store';
 import { getMenus, getPopularMenus, getRecommendMenus } from '@/api/menu';
@@ -13,6 +14,7 @@ import { getMenuImage } from '@/components/menuImages';
 import { useVoiceOrder } from '@/stt/useVoiceOrder';
 
 const store = useOrderStore();
+const router = useRouter();
 const { totalPrice, carNum, customerName } = storeToRefs(store);
 
 const activeTab = ref('추천');
@@ -51,20 +53,47 @@ function applyDecafRecommendation() {
   lastMatch.value = '☕ 카페인 없는 음료로 추천을 바꿨어요';
 }
 
-// 음성 인식 → 파싱·장바구니 반영은 모두 store.parseVoiceOrder 가 담당.
+// "주문 완료/결제할게" 류 발화 → 무터치 자동 주문 제출 의도.
+// '다시 주문/취소' 같은 비우기 의도는 제외(오발 방지).
+function isCheckoutRequest(text: string): boolean {
+  const c = text.replace(/\s+/g, '');
+  if (/다시|죄송|미안|처음부터|취소|초기화|리셋|잘못/.test(c)) return false;
+  return /주문완료|주문끝|주문할게|주문할래|주문해줘|주문해주세요|주문접수|결제|계산|이대로/.test(
+    c,
+  );
+}
+
+// 음성만으로 주문 확정 → final 화면으로 이동(거기서 POST /orders 전송).
+function submitByVoice() {
+  if (!store.orderItems.length) {
+    lastMatch.value = '🛒 담긴 메뉴가 없어요. 메뉴를 먼저 말씀해 주세요.';
+    return;
+  }
+  if (!store.customerId) {
+    lastMatch.value = '🚗 차량 번호가 아직 인식되지 않았어요.';
+    return;
+  }
+  lastMatch.value = '✅ 주문할게요! 잠시만요…';
+  router.push('/final');
+}
+
+// 음성 인식 → 파싱·장바구니 반영은 store.parseVoiceOrder 가 담당.
 const { supported, listening, transcript, error: voiceError } = useVoiceOrder(
   (text) => {
-    // 카페인 없는 음료 추천 요청이면 추천 목록만 바꾸고 끝(장바구니 변경 X).
+    // 1) 카페인 없는 음료 추천 요청 → 추천 목록만 교체하고 끝.
     if (isDecafRequest(text)) {
       applyDecafRecommendation();
       return;
     }
+    // 2) 메뉴/수량 파싱(담기·빼기·비우기) — 제출 전에 먼저 담는다.
     const { added, removed, cleared } = store.parseVoiceOrder(text);
     const parts: string[] = [];
     if (cleared) parts.push('🗑 장바구니 비움');
     if (removed.length) parts.push(...removed.map((n) => `${n} 뺌`));
     if (added.length) parts.push(...added.map((a) => `${a.name} ×${a.qty}`));
     if (parts.length) lastMatch.value = parts.join(', ');
+    // 3) 주문 확정 의도면 무터치로 제출 ("아메리카노 두 잔 주문할게요" → 담기+제출).
+    if (isCheckoutRequest(text)) submitByVoice();
   },
 );
 
