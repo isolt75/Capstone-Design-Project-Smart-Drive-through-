@@ -40,6 +40,13 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
+    # 같은 공유기(LAN)의 사설 IP에서 접속하는 키오스크/직원 화면도 허용.
+    # 서버 노트북 IP가 바뀌어도 되도록 사설 대역(192.168/10/172.16-31)을 정규식으로 열어둔다.
+    allow_origin_regex=(
+        r"^http://(localhost|127\.0\.0\.1|"
+        r"(192\.168|10\.\d{1,3}|172\.(1[6-9]|2\d|3[01]))\.\d{1,3}\.\d{1,3})"
+        r"(:\d+)?$"
+    ),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
