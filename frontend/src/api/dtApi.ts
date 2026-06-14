@@ -4,7 +4,7 @@ export interface Menu {
   menuName: string;
   price: number;
   category: string;
-  caffeine: 'Y' | 'N';
+  cafYn: 'Y' | 'N';
   temp: 'Hot' | 'Cold';
 }
 

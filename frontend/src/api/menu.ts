@@ -3,11 +3,12 @@ import type { Menu } from './dtApi';
 import type { MenuItem } from '@/stores/store';
 import { getMenuImage } from '@/components/menuImages';
 
-const toMenuItem = ({ menuId, menuName, price, category }: Menu): MenuItem => ({
+const toMenuItem = ({ menuId, menuName, price, category, cafYn }: Menu): MenuItem => ({
   id: menuId,
   name: menuName,
   price: price,
   category: category,
+  caffeine: cafYn === 'Y',
   image: getMenuImage(menuId),
   quantity: 1,
 });

@@ -2,6 +2,7 @@
 // 키오스크 첫 화면 = 전체 메뉴 그리드. 더 이상 환영/추천 팝업 없음.
 // 음성은 진입 즉시 항상 켜져 있고, 말하면 NLU 가 음료+수량을 뽑아 장바구니에 자동 담음.
 import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useOrderStore, type MenuItem } from '@/stores/store';
 import { getMenus, getPopularMenus, getRecommendMenus } from '@/api/menu';
@@ -13,6 +14,7 @@ import { getMenuImage } from '@/components/menuImages';
 import { useVoiceOrder } from '@/stt/useVoiceOrder';
 
 const store = useOrderStore();
+const router = useRouter();
 const { totalPrice, carNum, customerName } = storeToRefs(store);
 
 const activeTab = ref('추천');
@@ -22,12 +24,40 @@ const lastMatch = ref<string | null>(null);
 const fPrice = (p: number) => p.toLocaleString('ko-KR');
 const addMenu = (menu: MenuItem) => store.addItem(menu);
 
+// 장바구니에 뭔가 담긴 상태에서 이 키워드가 발화되면 /confirm 으로 자동 이동.
+const CHECKOUT_KEYWORDS = ['주문할게', '결제할게', '이걸로할게', '이걸로요', '주문완료', '결제해줘', '됐어', '끝이'];
+
+// 카페인 없는 메뉴를 원한다는 의도 키워드.
+const DECAF_KEYWORDS = ['카페인없는', '카페인안들어간', '카페인없어도', '디카페인', '카페인빼고'];
+
 // 음성 인식 → 파싱·장바구니 반영은 모두 store.parseVoiceOrder 가 담당.
+// 메뉴 담으면서 "주세요" 포함 → 담은 뒤 바로 confirm.
+// 또는 장바구니에 항목이 있는 상태에서 완료 키워드 → confirm.
+// "카페인없는거" 발화 → 추천탭을 카페인 없는 메뉴로 교체.
 const { supported, listening, transcript, error: voiceError } = useVoiceOrder(
   (text) => {
     const added = store.parseVoiceOrder(text);
     if (added.length) {
       lastMatch.value = added.map((a) => `${a.name} ×${a.qty}`).join(', ');
+    }
+    const compact = text.replace(/\s+/g, '');
+
+    // 카페인 의도 감지 → 추천탭 교체
+    if (DECAF_KEYWORDS.some((kw) => compact.includes(kw))) {
+      const decafItems = store.availableMenus.filter((m) => m.caffeine === false);
+      const idx = menuCategories.value.findIndex((c) => c.name === '추천');
+      if (idx >= 0 && decafItems.length) {
+        menuCategories.value[idx] = { name: '추천', items: decafItems };
+        activeTab.value = '추천';
+        lastMatch.value = '카페인 없는 메뉴로 추천 변경됨';
+      }
+      return;
+    }
+
+    const hasCheckoutKw = CHECKOUT_KEYWORDS.some((kw) => compact.includes(kw));
+    const hasJuseyo = compact.includes('주세요');
+    if ((hasJuseyo && added.length > 0) || (hasCheckoutKw && store.orderItems.length > 0)) {
+      router.push('/confirm');
     }
   },
 );

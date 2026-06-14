@@ -120,11 +120,18 @@ export const useOrderStore = defineStore('order', {
     parseVoiceOrder(text: string): Array<{ name: string; qty: number }> {
       if (!text) return [];
       const numberMap: Record<string, number> = {
-        한: 1, 하나: 1,
-        두: 2, 둘: 2,
-        세: 3, 셋: 3,
-        네: 4, 넷: 4,
-        다섯: 5, 여섯: 6, 일곱: 7, 여덟: 8, 아홉: 9, 열: 10,
+        // 접미사 포함 형태 먼저 (길이 우선 매칭에서 이기도록)
+        한개: 1, 한잔: 1, 하나: 1,
+        두개: 2, 두잔: 2, 둘: 2,
+        세개: 3, 세잔: 3, 셋: 3,
+        네개: 4, 네잔: 4, 넷: 4,
+        다섯개: 5, 다섯잔: 5, 다섯: 5,
+        여섯개: 6, 여섯잔: 6, 여섯: 6,
+        일곱개: 7, 일곱잔: 7, 일곱: 7,
+        여덟개: 8, 여덟잔: 8, 여덟: 8,
+        아홉개: 9, 아홉잔: 9, 아홉: 9,
+        열개: 10, 열잔: 10, 열: 10,
+        한: 1, 두: 2, 세: 3, 네: 4,
       };
       const numberWords = Object.keys(numberMap).sort((a, b) => b.length - a.length);
 
@@ -144,8 +151,9 @@ export const useOrderStore = defineStore('order', {
         const idx = compact.indexOf(needle);
         if (idx < 0) continue;
 
-        const before = compact.slice(Math.max(0, idx - 8), idx);
-        const after = compact.slice(idx + needle.length, idx + needle.length + 12);
+        // before 3자 / after 5자 — 좁게 잡아야 인접 메뉴의 수량이 섞이지 않음
+        const before = compact.slice(Math.max(0, idx - 3), idx);
+        const after = compact.slice(idx + needle.length, idx + needle.length + 5);
         const windowText = before + after;
 
         // 1) 아라비아 숫자 우선
@@ -155,7 +163,7 @@ export const useOrderStore = defineStore('order', {
           const n = Number(num[0]);
           if (n > 0 && n < 100) qty = n;
         } else {
-          // 2) 한글 수사 (긴 것부터)
+          // 2) 한글 수사 (긴 것부터 — "두개"가 "두"보다 먼저 매칭)
           for (const w of numberWords) {
             if (windowText.includes(w)) { qty = numberMap[w]; break; }
           }
