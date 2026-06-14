@@ -47,7 +47,7 @@ const { supported, listening, transcript, error: voiceError } = useVoiceOrder(
       const decafItems = store.availableMenus.filter((m) => m.caffeine === false);
       const idx = menuCategories.value.findIndex((c) => c.name === '추천');
       if (idx >= 0 && decafItems.length) {
-        menuCategories.value[idx] = { name: '추천', items: decafItems };
+        menuCategories.value.splice(idx, 1, { name: '추천', items: decafItems });
         activeTab.value = '추천';
         lastMatch.value = '카페인 없는 메뉴로 추천 변경됨';
       }
