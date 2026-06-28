@@ -92,7 +92,7 @@ onBeforeUnmount(stopPolling);
     <!-- 장바구니 화면 -->
     <template v-else>
       <h1 class="title">음성 주문 장바구니</h1>
-      <p class="event-id">세션 ID: {{ eventId }}</p>
+      <p class="event-id">세션 ID: {{ activeEventId ?? '대기 중...' }}</p>
 
       <div v-if="error" class="error">{{ error }}</div>
 
