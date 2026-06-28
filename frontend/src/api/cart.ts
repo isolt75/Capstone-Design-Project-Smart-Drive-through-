@@ -1,13 +1,14 @@
 import api from './http';
 import type { CartRes, CheckoutRes } from './dtApi';
 
-const base = (eventId: string) => `/api/v1/drivethrough/cart/${eventId}`;
+// baseURL = http://host:8000/api  →  여기서부터는 /v1/... 만 붙이면 됨
+const base = (eventId: string) => `/v1/drivethrough/cart/${eventId}`;
 
 export const getCart = (eventId: string) =>
   api.get<CartRes>(base(eventId)).then((r) => r.data);
 
 export const getLatestCart = () =>
-  api.get<CartRes>('/api/v1/drivethrough/cart/latest').then((r) => r.data);
+  api.get<CartRes>('/v1/drivethrough/cart/latest').then((r) => r.data);
 
 export const confirmCart = (eventId: string) =>
   api.post<{ success: boolean }>(base(eventId) + '/confirm').then((r) => r.data);
