@@ -27,15 +27,13 @@ async function fetchCart() {
       ? await getLatestCart()
       : await getCart(activeEventId.value!);
 
-    if (data.status === 'PAID' && cart.value?.status !== 'PAID') {
-      // 백엔드에서 이미 자동 결제 완료된 경우
-      orderNumber.value = null; // 주문번호는 cart API에 없으므로 표시 생략
-    }
-
     if (data.event_id) activeEventId.value = data.event_id;
     cart.value = data;
 
-    if (data.status === 'PAID') stopPolling();
+    if (data.status === 'PAID') {
+      orderNumber.value = data.orderNumber ?? null;
+      stopPolling();
+    }
   } catch {
     error.value = '장바구니를 불러오지 못했습니다.';
   }

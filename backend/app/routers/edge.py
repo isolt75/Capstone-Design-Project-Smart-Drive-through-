@@ -7,7 +7,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -228,15 +228,16 @@ def _get_or_create_cust(db: Session, event_id: str) -> Cust:
 
 @router.get("/drivethrough/cart/latest")
 def get_latest_cart(db: Session = Depends(get_db)):
-    """가장 최근 OPEN/CONFIRMED 카트를 반환. 없으면 status=EMPTY."""
+    """최근 10분 안의 카트를 반환 (PAID 포함). 없으면 status=EMPTY."""
+    cutoff = datetime.now() - timedelta(minutes=10)
     latest = (
         db.query(CartItem)
-        .filter(CartItem.status.in_(["OPEN", "CONFIRMED"]))
+        .filter(CartItem.created_at >= cutoff)
         .order_by(CartItem.created_at.desc())
         .first()
     )
     if not latest:
-        return {"event_id": None, "status": "EMPTY", "items": [], "total": 0}
+        return {"event_id": None, "status": "EMPTY", "items": [], "total": 0, "orderNumber": None}
     return get_cart(latest.event_id, db)
 
 
@@ -263,11 +264,33 @@ def get_cart(event_id: str, db: Session = Depends(get_db)):
     ]
     total = sum(i["subtotal"] for i in items)
     overall_status = rows[0][0].status if rows else "EMPTY"
+
+    # PAID일 때 주문번호 조회
+    order_number = None
+    if overall_status == "PAID":
+        ev = db.query(EdgeEvent).filter(EdgeEvent.event_id == event_id).first()
+        plate = ev.plate if ev and ev.plate else f"VOICE_{event_id[:8]}"
+        cust = (
+            db.query(Cust)
+            .filter(func.replace(Cust.car_num, " ", "") == normalize(plate))
+            .first()
+        )
+        if cust:
+            latest_odr = (
+                db.query(Odr)
+                .filter(Odr.cust_num == cust.cust_num)
+                .order_by(Odr.odr_num.desc())
+                .first()
+            )
+            if latest_odr:
+                order_number = latest_odr.odr_grp
+
     return {
         "event_id": event_id,
         "status": overall_status,
         "items": items,
         "total": total,
+        "orderNumber": order_number,
     }
 
 

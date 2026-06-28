@@ -68,10 +68,11 @@ export interface CartEntry {
 }
 
 export interface CartRes {
-  event_id: string;
+  event_id: string | null;
   status: 'OPEN' | 'CONFIRMED' | 'PAID' | 'EMPTY';
   items: CartEntry[];
   total: number;
+  orderNumber?: string | null;
 }
 
 export interface CheckoutRes {
