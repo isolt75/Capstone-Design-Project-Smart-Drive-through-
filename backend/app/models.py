@@ -54,6 +54,20 @@ class Odr(Base):
     odr_status: Mapped[str] = mapped_column("ODR_STATUS", String(10), nullable=False, default="WAITING")
 
 
+class CartItem(Base):
+    """음성 주문 장바구니. event_id 단위로 누적, status: OPEN→CONFIRMED→PAID."""
+
+    __tablename__ = "DT_TB_CART"
+
+    id: Mapped[int] = mapped_column("ID", Integer, primary_key=True, autoincrement=True)
+    event_id: Mapped[str] = mapped_column("EVENT_ID", String(64), nullable=False, index=True)
+    menu_num: Mapped[int] = mapped_column("MENU_NUM", ForeignKey("DT_TB_MENU.MENU_NUM"), nullable=False)
+    quantity: Mapped[int] = mapped_column("QUANTITY", Integer, nullable=False)
+    unit_price: Mapped[int] = mapped_column("UNIT_PRICE", Integer, nullable=False)
+    status: Mapped[str] = mapped_column("STATUS", String(10), nullable=False, default="OPEN")
+    created_at: Mapped[datetime] = mapped_column("CREATED_AT", DateTime, default=datetime.now)
+
+
 class EdgeEvent(Base):
     """엣지가 보낸 차량 진입/음성 이벤트. /ocr/latest 와 음성 텍스트 연결의 근거."""
 

@@ -56,6 +56,32 @@ export interface STTRes {
   text: string;
 }
 
+// 음성 주문 장바구니
+export interface CartEntry {
+  cartItemId: number;
+  menuNum: number;
+  menuName: string;
+  quantity: number;
+  unitPrice: number;
+  subtotal: number;
+  status: 'OPEN' | 'CONFIRMED' | 'PAID';
+}
+
+export interface CartRes {
+  event_id: string;
+  status: 'OPEN' | 'CONFIRMED' | 'PAID' | 'EMPTY';
+  items: CartEntry[];
+  total: number;
+}
+
+export interface CheckoutRes {
+  success: boolean;
+  event_id: string;
+  orderNumber: string;
+  customerId: number;
+  paidAt: string;
+}
+
 // 직원 대기 주문
 export interface StaffOrder {
   orderNum: string;
