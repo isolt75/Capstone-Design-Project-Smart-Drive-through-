@@ -134,9 +134,10 @@ async def voice_order(request: Request, db: Session = Depends(get_db)):
             )
     db.commit()
 
-    # "주문완료" 키워드 → 주문 확정
+    # "주문완료" 키워드 → 바로 결제까지 자동 처리
+    checkout_result = None
     if is_checkout:
-        _confirm_cart(db, event_id)
+        checkout_result = _do_checkout(db, event_id)
 
     return {
         "success": True,
@@ -145,6 +146,7 @@ async def voice_order(request: Request, db: Session = Depends(get_db)):
         "received_files": saved,
         "parsed": [{"name": i["menu_nm"], "qty": i["qty"]} for i in parsed_items],
         "checkout_triggered": is_checkout,
+        "checkout_result": checkout_result,
         "message": "voice-order received",
     }
 
@@ -161,6 +163,36 @@ def _confirm_cart(db: Session, event_id: str) -> int:
     )
     db.commit()
     return updated
+
+
+def _do_checkout(db: Session, event_id: str) -> dict | None:
+    """OPEN/CONFIRMED → PAID + DT_TB_ODR insert. 담긴 항목 없으면 None."""
+    items = (
+        db.query(CartItem)
+        .filter(
+            CartItem.event_id == event_id,
+            CartItem.status.in_(["OPEN", "CONFIRMED"]),
+        )
+        .all()
+    )
+    if not items:
+        return None
+    for ci in items:
+        ci.status = "PAID"
+    cust = _get_or_create_cust(db, event_id)
+    now = datetime.now()
+    order_no = _next_order_no(db, now)
+    for ci in items:
+        db.add(Odr(
+            cust_num=cust.cust_num,
+            odr_time=now,
+            menu_num=ci.menu_num,
+            menu_cnt=ci.quantity,
+            odr_grp=order_no,
+            odr_status="WAITING",
+        ))
+    db.commit()
+    return {"orderNumber": order_no, "paidAt": now.isoformat()}
 
 
 def _next_order_no(db: Session, now: datetime) -> str:
@@ -193,6 +225,20 @@ def _get_or_create_cust(db: Session, event_id: str) -> Cust:
 # ---------------------------------------------------------------------------
 # 장바구니 엔드포인트
 # ---------------------------------------------------------------------------
+
+@router.get("/drivethrough/cart/latest")
+def get_latest_cart(db: Session = Depends(get_db)):
+    """가장 최근 OPEN/CONFIRMED 카트를 반환. 없으면 status=EMPTY."""
+    latest = (
+        db.query(CartItem)
+        .filter(CartItem.status.in_(["OPEN", "CONFIRMED"]))
+        .order_by(CartItem.created_at.desc())
+        .first()
+    )
+    if not latest:
+        return {"event_id": None, "status": "EMPTY", "items": [], "total": 0}
+    return get_cart(latest.event_id, db)
+
 
 @router.get("/drivethrough/cart/{event_id}")
 def get_cart(event_id: str, db: Session = Depends(get_db)):
@@ -235,45 +281,11 @@ def confirm_cart(event_id: str, db: Session = Depends(get_db)):
 
 @router.post("/drivethrough/cart/{event_id}/checkout")
 def checkout_cart(event_id: str, db: Session = Depends(get_db)):
-    items = (
-        db.query(CartItem)
-        .filter(
-            CartItem.event_id == event_id,
-            CartItem.status.in_(["OPEN", "CONFIRMED"]),
-        )
-        .all()
-    )
-    if not items:
+    result = _do_checkout(db, event_id)
+    if result is None:
         raise HTTPException(status_code=404, detail="결제할 항목 없음 또는 이미 결제됨")
+    return {"success": True, "event_id": event_id, **result}
 
-    # PAID 처리
-    for ci in items:
-        ci.status = "PAID"
-
-    # DT_TB_ODR 에 삽입 → 직원 대기열에 올라감
-    cust = _get_or_create_cust(db, event_id)
-    now = datetime.now()
-    order_no = _next_order_no(db, now)
-    for ci in items:
-        db.add(
-            Odr(
-                cust_num=cust.cust_num,
-                odr_time=now,
-                menu_num=ci.menu_num,
-                menu_cnt=ci.quantity,
-                odr_grp=order_no,
-                odr_status="WAITING",
-            )
-        )
-
-    db.commit()
-    return {
-        "success": True,
-        "event_id": event_id,
-        "orderNumber": order_no,
-        "customerId": cust.cust_num,
-        "paidAt": now.isoformat(),
-    }
 
 
 @router.get("/edge/events")

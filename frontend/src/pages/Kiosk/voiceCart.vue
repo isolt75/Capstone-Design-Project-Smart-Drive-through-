@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { checkoutCart, getCart } from '@/api/cart';
+import { checkoutCart, getCart, getLatestCart } from '@/api/cart';
 import type { CartRes } from '@/api/dtApi';
 
 const route = useRoute();
 const router = useRouter();
-const eventId = route.params.eventId as string;
+
+// eventId 파라미터가 없거나 'latest'이면 항상 최신 카트를 폴링
+const paramId = route.params.eventId as string | undefined;
+const useLatest = !paramId || paramId === 'latest';
+const activeEventId = ref<string | null>(useLatest ? null : paramId);
 
 const cart = ref<CartRes | null>(null);
 const error = ref<string | null>(null);
@@ -19,8 +23,19 @@ let pollTimer: number | null = null;
 
 async function fetchCart() {
   try {
-    cart.value = await getCart(eventId);
-    if (cart.value.status === 'PAID') stopPolling();
+    const data = useLatest
+      ? await getLatestCart()
+      : await getCart(activeEventId.value!);
+
+    if (data.status === 'PAID' && cart.value?.status !== 'PAID') {
+      // 백엔드에서 이미 자동 결제 완료된 경우
+      orderNumber.value = null; // 주문번호는 cart API에 없으므로 표시 생략
+    }
+
+    if (data.event_id) activeEventId.value = data.event_id;
+    cart.value = data;
+
+    if (data.status === 'PAID') stopPolling();
   } catch {
     error.value = '장바구니를 불러오지 못했습니다.';
   }
@@ -39,14 +54,14 @@ function stopPolling() {
 }
 
 async function handleCheckout() {
-  if (!cart.value?.items.length || paying.value) return;
+  if (!cart.value?.items.length || paying.value || !activeEventId.value) return;
   paying.value = true;
   try {
-    const res = await checkoutCart(eventId);
+    const res = await checkoutCart(activeEventId.value);
     orderNumber.value = res.orderNumber;
-    cart.value = await getCart(eventId);
+    cart.value = await getCart(activeEventId.value);
     stopPolling();
-  } catch (e: unknown) {
+  } catch {
     error.value = '결제에 실패했습니다. 다시 시도해 주세요.';
   } finally {
     paying.value = false;

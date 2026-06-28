@@ -13,6 +13,7 @@ const routes = [
   { path: '/confirm', component: orderConfirm },
   { path: '/pos', component: pos },
   { path: '/final', component: final },
+  { path: '/voice-cart', component: voiceCart },
   { path: '/voice-cart/:eventId', component: voiceCart },
 ];
 
