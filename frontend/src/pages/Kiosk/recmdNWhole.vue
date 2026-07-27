@@ -66,7 +66,7 @@ function isCheckoutRequest(text: string): boolean {
 
 function submitByVoice() {
   if (!store.orderItems.length) return;
-  if (!store.customerId) store.customerId = `GUEST-${Date.now()}`;
+  if (!store.customerId) store.customerId = `손님-${String(Date.now()).slice(-8)}`;
   lastMatch.value = '✅ 주문할게요! 잠시만요…';
   router.push('/final');
 }
@@ -81,7 +81,8 @@ function scheduleAutoSubmit() {
 
 const { supported, listening, transcript, error: voiceError } = useVoiceOrder(
   (text, eventId) => {
-    if (!store.customerId && eventId) store.customerId = eventId;
+    // event_id는 36자 UUID → DB CUST_NM/CAR_NUM(20자) 제한 때문에 앞 8자만 사용
+    if (!store.customerId && eventId) store.customerId = `손님-${eventId.slice(0, 8)}`;
 
     if (isDecafRequest(text)) {
       applyDecafRecommendation();

@@ -67,7 +67,7 @@ onMounted(async () => {
     router.replace('/');
     return;
   }
-  if (!store.customerId) store.customerId = `GUEST-${Date.now()}`;
+  if (!store.customerId) store.customerId = `손님-${String(Date.now()).slice(-8)}`;
 
   totalPrice.value = store.totalPrice;
 
