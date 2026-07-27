@@ -70,8 +70,7 @@ function submitByVoice() {
     return;
   }
   if (!store.customerId) {
-    lastMatch.value = '🚗 차량 번호가 아직 인식되지 않았어요.';
-    return;
+    store.customerId = `GUEST-${Date.now()}`;
   }
   lastMatch.value = '✅ 주문할게요! 잠시만요…';
   router.push('/final');
@@ -79,7 +78,11 @@ function submitByVoice() {
 
 // 음성 인식 → 파싱·장바구니 반영은 store.parseVoiceOrder 가 담당.
 const { supported, listening, transcript, error: voiceError } = useVoiceOrder(
-  (text) => {
+  (text, eventId) => {
+    // 번호판 없는 사람 손님 모드: event_id를 임시 고객 ID로 사용
+    if (!store.customerId && eventId) {
+      store.customerId = eventId;
+    }
     // 1) 카페인 없는 음료 추천 요청 → 추천 목록만 교체하고 끝.
     if (isDecafRequest(text)) {
       applyDecafRecommendation();

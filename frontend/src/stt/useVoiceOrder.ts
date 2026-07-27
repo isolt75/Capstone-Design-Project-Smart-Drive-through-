@@ -15,7 +15,7 @@ interface VoiceLatest {
 
 const POLL_MS = 2000;
 
-export function useVoiceOrder(onFinal: (text: string) => void) {
+export function useVoiceOrder(onFinal: (text: string, eventId: string) => void) {
   const supported = ref(true); // Pi 경로는 항상 사용 가능 — 백엔드가 떠 있느냐만 변수
   const listening = ref(false);
   const transcript = ref('');
@@ -34,7 +34,7 @@ export function useVoiceOrder(onFinal: (text: string) => void) {
       if (data.event_id === lastEventId) return;
       lastEventId = data.event_id;
       transcript.value = data.text;
-      if (!isFirst) onFinal(data.text);
+      if (!isFirst) onFinal(data.text, data.event_id);
     } catch (e: any) {
       error.value = '백엔드 연결 끊김';
     }
