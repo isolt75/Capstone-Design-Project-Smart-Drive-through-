@@ -3,26 +3,55 @@ import axios from 'axios';
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useOrderStore } from '@/stores/store';
-import { createOrder } from '@/api/order';
+import { createOrder, getPayStatus } from '@/api/order';
 
 const store = useOrderStore();
 const router = useRouter();
 const remaining = ref(5);
 const error = ref<string | null>(null);
+const payStatus = ref<'PENDING' | 'PAID' | null>(null);
+const totalPrice = ref(0);
 
-let interval: number | null = null;
-let timeout: number | null = null;
+let pollTimer: number | null = null;
+let countdownInterval: number | null = null;
+let redirectTimeout: number | null = null;
+
+const startCountdown = () => {
+  const endTime = Date.now() + 5000;
+  countdownInterval = window.setInterval(() => {
+    const sec = Math.ceil((endTime - Date.now()) / 1000);
+    remaining.value = sec <= 0 ? 0 : sec;
+    if (sec <= 0 && countdownInterval) clearInterval(countdownInterval);
+  }, 1000);
+  redirectTimeout = window.setTimeout(() => router.push('/'), 5000);
+};
+
+const startPolling = (orderNo: string) => {
+  pollTimer = window.setInterval(async () => {
+    try {
+      const res = await getPayStatus(orderNo);
+      if (res.payStatus === 'PAID') {
+        payStatus.value = 'PAID';
+        if (pollTimer) clearInterval(pollTimer);
+        startCountdown();
+      }
+    } catch {
+      /* 폴링 실패는 무시하고 계속 시도 */
+    }
+  }, 2000);
+};
 
 onMounted(async () => {
   if (!store.orderItems || store.orderItems.length === 0) {
     router.replace('/');
     return;
   }
-
   if (!store.customerId) {
     error.value = '차량 정보가 없습니다.';
     return;
   }
+
+  totalPrice.value = store.totalPrice;
 
   try {
     const items = store.orderItems.map((item) => ({
@@ -32,50 +61,32 @@ onMounted(async () => {
 
     const data = await createOrder({
       plate: store.customerId,
-      customerName: store.customerName ?? store.customerId!, // 번호판 = 이름
+      customerName: store.customerName ?? store.customerId!,
       items,
     });
 
     store.orderNum = data.orderNumber;
     if (data.success) {
       store.saveCompletedOrder();
-      store.clearCart(); // 무터치 반복 대비 — 제출 후 장바구니 비움(고객/번호판은 유지)
+      store.clearCart();
+      payStatus.value = 'PENDING';
+      startPolling(data.orderNumber);
     } else {
       error.value = '주문 처리에 실패했습니다.';
-      return;
     }
   } catch (err: unknown) {
-    console.error(err);
-
     if (axios.isAxiosError(err)) {
       error.value = err.response?.data?.message ?? '주문에 실패했습니다.';
     } else {
       error.value = '서버 연결에 실패했습니다.';
     }
-    return;
   }
-
-  //카운트다운 출력
-  const endTime = Date.now() + 5000;
-  interval = window.setInterval(() => {
-    const sec = Math.ceil((endTime - Date.now()) / 1000);
-    if (sec <= 0) {
-      if (interval) clearInterval(interval);
-      remaining.value = 0;
-      return;
-    }
-    remaining.value = sec;
-  }, 1000);
-
-  timeout = window.setTimeout(() => {
-    // store.clear();
-    router.push('/');
-  }, 5000);
 });
 
 onBeforeUnmount(() => {
-  if (interval) clearInterval(interval);
-  if (timeout) clearTimeout(timeout);
+  if (pollTimer) clearInterval(pollTimer);
+  if (countdownInterval) clearInterval(countdownInterval);
+  if (redirectTimeout) clearTimeout(redirectTimeout);
 });
 </script>
 
@@ -83,21 +94,41 @@ onBeforeUnmount(() => {
   <div class="order-complete">
     <div class="complete-card">
       <template v-if="!error">
-        <div class="check">✓</div>
-        <h1>주문 완료!</h1>
-        <p class="thanks">맛있게 준비해 드릴게요 ☕</p>
 
-        <div class="order-no">
-          <span>주문 번호</span>
-          <strong>{{ store.orderNum }}</strong>
-        </div>
+        <!-- 결제 대기 -->
+        <template v-if="payStatus === 'PENDING'">
+          <div class="spinner"></div>
+          <h1>결제 대기 중</h1>
+          <p class="thanks">직원이 결제를 처리하고 있습니다 ☕</p>
+          <div class="order-no">
+            <span>주문 번호</span>
+            <strong>{{ store.orderNum }}</strong>
+          </div>
+          <div class="price-box">
+            <span>결제 금액</span>
+            <strong>{{ totalPrice.toLocaleString('ko-KR') }}원</strong>
+          </div>
+        </template>
 
-        <div class="count-down">
-          <p class="cd-title">🚗 차량을 픽업 창구로 이동해 주세요</p>
-          <p v-if="remaining > 0" class="cd-sec">
-            {{ remaining }}초 후 처음 화면으로 돌아갑니다
-          </p>
-        </div>
+        <!-- 결제 완료 -->
+        <template v-else-if="payStatus === 'PAID'">
+          <div class="check">✓</div>
+          <h1>결제 완료!</h1>
+          <p class="thanks">맛있게 준비해 드릴게요 ☕</p>
+          <div class="order-no">
+            <span>주문 번호</span>
+            <strong>{{ store.orderNum }}</strong>
+          </div>
+          <div class="price-box paid">
+            <span>결제 금액</span>
+            <strong>{{ totalPrice.toLocaleString('ko-KR') }}원</strong>
+          </div>
+          <div class="count-down">
+            <p class="cd-title">🚗 차량을 픽업 창구로 이동해 주세요</p>
+            <p v-if="remaining > 0" class="cd-sec">{{ remaining }}초 후 처음 화면으로 돌아갑니다</p>
+          </div>
+        </template>
+
       </template>
 
       <template v-else>
@@ -128,6 +159,20 @@ onBeforeUnmount(() => {
   background: var(--surface);
   box-shadow: var(--shadow);
   text-align: center;
+}
+
+.spinner {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 22px;
+  border: 8px solid var(--surface-2);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .check {
@@ -161,7 +206,7 @@ onBeforeUnmount(() => {
 }
 
 .order-no {
-  margin: 28px 0;
+  margin: 28px 0 12px;
   padding: 20px;
   border-radius: var(--radius);
   background: var(--surface-2);
@@ -175,6 +220,28 @@ onBeforeUnmount(() => {
   font-size: 2.4rem;
   color: var(--primary-strong);
   letter-spacing: 0.05em;
+}
+
+.price-box {
+  margin: 0 0 20px;
+  padding: 16px 20px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.price-box span {
+  font-size: 1rem;
+  color: var(--text-muted);
+}
+.price-box strong {
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: var(--text-muted);
+}
+.price-box.paid strong {
+  color: var(--primary-strong);
 }
 
 .count-down {
@@ -206,16 +273,8 @@ onBeforeUnmount(() => {
 }
 
 @keyframes pop {
-  0% {
-    transform: scale(0.4);
-    opacity: 0;
-  }
-  70% {
-    transform: scale(1.1);
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
+  0% { transform: scale(0.4); opacity: 0; }
+  70% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
 }
 </style>

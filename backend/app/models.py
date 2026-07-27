@@ -52,6 +52,7 @@ class Odr(Base):
     # --- 신규 추가: 주문 묶음 + 처리 상태 ---
     odr_grp: Mapped[str] = mapped_column("ODR_GRP", String(20), nullable=False, index=True)
     odr_status: Mapped[str] = mapped_column("ODR_STATUS", String(10), nullable=False, default="WAITING")
+    pay_status: Mapped[str] = mapped_column("PAY_STATUS", String(10), nullable=False, default="PENDING")
 
 
 class EdgeEvent(Base):

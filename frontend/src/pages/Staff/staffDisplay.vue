@@ -4,12 +4,14 @@
 // 완료 처리는 백엔드 POST /orders/{orderNo}/done 을 호출한다.
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { getWaitingOrders, completeOrder, type StaffOrder } from '@/api';
+import { payOrder } from '@/api/order';
 import { wsURL } from '@/api/http';
 
 const orders = ref<StaffOrder[]>([]);
 const loading = ref(true);
 const error = ref<string | null>(null);
-const completing = ref<Set<string>>(new Set()); // 중복 클릭 방지
+const completing = ref<Set<string>>(new Set());
+const paying = ref<Set<string>>(new Set());
 const now = ref(new Date());
 
 let poll: number; // WS 끊김 대비 안전망 폴링
@@ -50,18 +52,30 @@ const connectWs = () => {
   ws.onerror = () => ws?.close();
 };
 
+const onPay = async (orderNo: string) => {
+  if (paying.value.has(orderNo)) return;
+  paying.value.add(orderNo);
+  try {
+    await payOrder(orderNo);
+    const idx = orders.value.findIndex((o) => o.orderNum === orderNo);
+    if (idx !== -1) orders.value[idx] = { ...orders.value[idx], payStatus: 'PAID' };
+  } catch (err: any) {
+    error.value = err?.response?.data?.message ?? '결제 처리에 실패했습니다.';
+  } finally {
+    paying.value.delete(orderNo);
+  }
+};
+
 const onComplete = async (orderNo: string) => {
   if (completing.value.has(orderNo)) return;
   completing.value.add(orderNo);
   try {
     await completeOrder(orderNo);
-    // 낙관적 제거 — 즉시 화면에서 뺀다. 서버도 곧 WebSocket 으로 갱신된
-    // 대기열을 보내 다른 직원 화면과 동기화된다.
     orders.value = orders.value.filter((o) => o.orderNum !== orderNo);
   } catch (err: any) {
     error.value =
       err?.response?.data?.message ?? '완료 처리에 실패했습니다. 다시 시도하세요.';
-    await fetchOrders(); // 실패 시 서버 상태로 되돌림
+    await fetchOrders();
   } finally {
     completing.value.delete(orderNo);
   }
@@ -115,7 +129,10 @@ onBeforeUnmount(() => {
       <article v-for="order in orders" :key="order.orderNum" class="card">
         <div class="card-head">
           <span class="no">No. {{ order.orderNum }}</span>
-          <span class="plate">{{ order.customerId }}</span>
+          <div class="head-right">
+            <span v-if="order.payStatus === 'PAID'" class="badge-paid">✓ 결제완료</span>
+            <span class="plate">{{ order.customerId }}</span>
+          </div>
         </div>
         <ul class="items">
           <li v-for="item in order.items" :key="item.id" class="row">
@@ -123,13 +140,27 @@ onBeforeUnmount(() => {
             <span class="qty">{{ item.quantity }}개</span>
           </li>
         </ul>
-        <button
-          class="done-btn"
-          :disabled="completing.has(order.orderNum)"
-          @click="onComplete(order.orderNum)"
-        >
-          {{ completing.has(order.orderNum) ? '처리 중…' : '✓ 완료' }}
-        </button>
+        <div class="total-row">
+          <span class="total-label">합계</span>
+          <span class="total-price">{{ order.totalPrice.toLocaleString('ko-KR') }}원</span>
+        </div>
+        <div class="btn-group">
+          <button
+            v-if="order.payStatus === 'PENDING'"
+            class="pay-btn"
+            :disabled="paying.has(order.orderNum)"
+            @click="onPay(order.orderNum)"
+          >
+            {{ paying.has(order.orderNum) ? '처리 중…' : '💳 결제하기' }}
+          </button>
+          <button
+            class="done-btn"
+            :disabled="completing.has(order.orderNum)"
+            @click="onComplete(order.orderNum)"
+          >
+            {{ completing.has(order.orderNum) ? '처리 중…' : '✓ 픽업완료' }}
+          </button>
+        </div>
       </article>
     </div>
   </div>
@@ -240,6 +271,19 @@ onBeforeUnmount(() => {
   font-weight: 900;
   color: var(--primary-strong);
 }
+.head-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.badge-paid {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--success, #2e9e5b);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
 .plate {
   padding: 6px 14px;
   border-radius: var(--radius-xs);
@@ -272,14 +316,51 @@ onBeforeUnmount(() => {
   font-weight: 800;
 }
 
+.total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0 16px;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+.total-label {
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.total-price {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: var(--primary-strong);
+}
+.btn-group {
+  display: flex;
+  gap: 10px;
+}
+.pay-btn {
+  flex: 1;
+  padding: 16px;
+  border: none;
+  border-radius: var(--radius-btn);
+  background: #f59e0b;
+  color: #fff;
+  font-size: 1.2rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.pay-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
 .done-btn {
-  width: 100%;
+  flex: 1;
   padding: 16px;
   border: none;
   border-radius: var(--radius-btn);
   background: var(--success, #2e9e5b);
   color: #fff;
-  font-size: 1.35rem;
+  font-size: 1.2rem;
   font-weight: 800;
   cursor: pointer;
 }

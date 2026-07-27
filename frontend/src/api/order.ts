@@ -1,5 +1,5 @@
 import api from './http';
-import type { OrderPayload, OrderRes, StaffOrder } from './dtApi';
+import type { OrderPayload, OrderRes, PayStatusRes, StaffOrder } from './dtApi';
 
 export const createOrder = async (payload: OrderPayload) => {
   const { data } = await api.post<OrderRes>('/orders', payload);
@@ -7,19 +7,27 @@ export const createOrder = async (payload: OrderPayload) => {
 };
 
 export const getWaitingOrders = async (): Promise<StaffOrder[]> => {
-  const { data } = await api.get<StaffOrder[]>(
-    // 'http://192.168.0.80:8080/customer',
-    '/orders/waiting',
-  );
+  const { data } = await api.get<StaffOrder[]>('/orders/waiting');
   return data;
 };
 
-// 직원이 주문 묶음을 완료 처리 → 대기열에서 제거 (POST /orders/{orderNo}/done)
 export const completeOrder = async (
   orderNo: string,
 ): Promise<{ success: boolean; updated: number }> => {
   const { data } = await api.post<{ success: boolean; updated: number }>(
     `/orders/${orderNo}/done`,
   );
+  return data;
+};
+
+export const payOrder = async (
+  orderNo: string,
+): Promise<{ success: boolean; orderNum: string; payStatus: string }> => {
+  const { data } = await api.post(`/orders/${orderNo}/pay`);
+  return data;
+};
+
+export const getPayStatus = async (orderNo: string): Promise<PayStatusRes> => {
+  const { data } = await api.get<PayStatusRes>(`/orders/${orderNo}/pay-status`);
   return data;
 };

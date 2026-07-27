@@ -59,6 +59,8 @@ export interface STTRes {
 export interface StaffOrder {
   orderNum: string;
   customerId: string;
+  payStatus: 'PENDING' | 'PAID';
+  totalPrice: number;
   items: StaffOrderItem[];
 }
 
@@ -66,4 +68,10 @@ export interface StaffOrderItem {
   id: number;
   name: string;
   quantity: number;
+  price: number;
+}
+
+export interface PayStatusRes {
+  orderNum: string;
+  payStatus: 'PENDING' | 'PAID';
 }

@@ -35,11 +35,18 @@ def _waiting_payload(db: Session) -> list[dict]:
     for odr, menu, cust in rows:
         order = grouped.setdefault(
             odr.odr_grp,
-            {"orderNum": odr.odr_grp, "customerId": cust.car_num, "items": []},
+            {
+                "orderNum": odr.odr_grp,
+                "customerId": cust.car_num,
+                "payStatus": odr.pay_status,
+                "totalPrice": 0,
+                "items": [],
+            },
         )
         order["items"].append(
-            {"id": menu.menu_num, "name": menu.menu_nm, "quantity": odr.menu_cnt}
+            {"id": menu.menu_num, "name": menu.menu_nm, "quantity": odr.menu_cnt, "price": menu.menu_price}
         )
+        order["totalPrice"] += menu.menu_price * odr.menu_cnt
     return list(grouped.values())
 
 
@@ -110,6 +117,42 @@ def create_order(req: OrderRequestIn, db: Session = Depends(get_db)):
 def waiting_orders(db: Session = Depends(get_db)):
     """대기(WAITING) 주문을 묶음별로 그룹핑해 직원 화면 형식으로 반환."""
     return _waiting_payload(db)
+
+
+@router.post("/{order_no}/pay")
+def pay_order(order_no: str, db: Session = Depends(get_db)):
+    """결제 처리 (Mock). PAY_STATUS를 PAID로 변경하고 직원·키오스크에 WebSocket push."""
+    rows = (
+        db.query(Odr)
+        .filter(Odr.odr_grp == order_no, Odr.odr_status == "WAITING")
+        .all()
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail="주문을 찾을 수 없습니다")
+    if rows[0].pay_status == "PAID":
+        return {"success": True, "orderNum": order_no, "payStatus": "PAID"}
+
+    for row in rows:
+        row.pay_status = "PAID"
+    db.commit()
+
+    staff_hub.notify({"type": "waiting", "orders": _waiting_payload(db)})
+    staff_hub.notify({"type": "paid", "orderNum": order_no})
+
+    return {"success": True, "orderNum": order_no, "payStatus": "PAID"}
+
+
+@router.get("/{order_no}/pay-status")
+def get_pay_status(order_no: str, db: Session = Depends(get_db)):
+    """키오스크가 폴링: 결제 완료 여부를 반환한다."""
+    row = (
+        db.query(Odr)
+        .filter(Odr.odr_grp == order_no)
+        .first()
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="주문을 찾을 수 없습니다")
+    return {"orderNum": order_no, "payStatus": row.pay_status}
 
 
 @router.post("/{order_no}/done")
