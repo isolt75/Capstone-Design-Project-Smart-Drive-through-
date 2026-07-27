@@ -46,10 +46,7 @@ onMounted(async () => {
     router.replace('/');
     return;
   }
-  if (!store.customerId) {
-    error.value = '차량 정보가 없습니다.';
-    return;
-  }
+  if (!store.customerId) store.customerId = `GUEST-${Date.now()}`;
 
   totalPrice.value = store.totalPrice;
 
