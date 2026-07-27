@@ -13,7 +13,7 @@ const payStatus = ref<'PENDING' | 'PAID' | null>(null);
 const totalPrice = ref(0);
 
 // 등록 카드 자동 결제(하이패스 방식)를 흉내내는 지연 — "결제 중" 스피너를 잠깐 보여준다.
-const AUTO_PAY_DELAY_MS = 2000;
+const AUTO_PAY_DELAY_MS = 5000;
 
 let pollTimer: number | null = null;
 let autoPayTimer: number | null = null;
