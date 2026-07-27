@@ -3,7 +3,7 @@ import axios from 'axios';
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useOrderStore } from '@/stores/store';
-import { createOrder, getPayStatus } from '@/api/order';
+import { createOrder, getPayStatus, payOrder } from '@/api/order';
 
 const store = useOrderStore();
 const router = useRouter();
@@ -12,9 +12,20 @@ const error = ref<string | null>(null);
 const payStatus = ref<'PENDING' | 'PAID' | null>(null);
 const totalPrice = ref(0);
 
+// 등록 카드 자동 결제(하이패스 방식)를 흉내내는 지연 — "결제 중" 스피너를 잠깐 보여준다.
+const AUTO_PAY_DELAY_MS = 2000;
+
 let pollTimer: number | null = null;
+let autoPayTimer: number | null = null;
 let countdownInterval: number | null = null;
 let redirectTimeout: number | null = null;
+
+const markPaid = () => {
+  if (payStatus.value === 'PAID') return;
+  payStatus.value = 'PAID';
+  if (pollTimer) clearInterval(pollTimer);
+  startCountdown();
+};
 
 const startCountdown = () => {
   const endTime = Date.now() + 5000;
@@ -26,15 +37,25 @@ const startCountdown = () => {
   redirectTimeout = window.setTimeout(() => router.push('/'), 5000);
 };
 
+// 등록 카드로 자동 결제. 백엔드 /pay 를 직접 호출한다(직원 버튼과 동일, 멱등).
+const autoPay = (orderNo: string) => {
+  autoPayTimer = window.setTimeout(async () => {
+    autoPayTimer = null;
+    try {
+      await payOrder(orderNo);
+      markPaid();
+    } catch {
+      /* 자동 결제 실패 시 폴링(직원 수동 결제)이 백업으로 동작 */
+    }
+  }, AUTO_PAY_DELAY_MS);
+};
+
+// 백업 경로: 백엔드나 직원이 먼저 PAID 로 바꾼 경우도 반영.
 const startPolling = (orderNo: string) => {
   pollTimer = window.setInterval(async () => {
     try {
       const res = await getPayStatus(orderNo);
-      if (res.payStatus === 'PAID') {
-        payStatus.value = 'PAID';
-        if (pollTimer) clearInterval(pollTimer);
-        startCountdown();
-      }
+      if (res.payStatus === 'PAID') markPaid();
     } catch {
       /* 폴링 실패는 무시하고 계속 시도 */
     }
@@ -67,7 +88,8 @@ onMounted(async () => {
       store.saveCompletedOrder();
       store.clearCart();
       payStatus.value = 'PENDING';
-      startPolling(data.orderNumber);
+      autoPay(data.orderNumber);   // 등록 카드 자동 결제
+      startPolling(data.orderNumber);  // 백업(직원 수동 결제 등)
     } else {
       error.value = '주문 처리에 실패했습니다.';
     }
@@ -82,6 +104,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   if (pollTimer) clearInterval(pollTimer);
+  if (autoPayTimer) clearTimeout(autoPayTimer);
   if (countdownInterval) clearInterval(countdownInterval);
   if (redirectTimeout) clearTimeout(redirectTimeout);
 });
