@@ -22,19 +22,32 @@ export function useVoiceOrder(onFinal: (text: string, eventId: string) => void) 
   const error = ref<string | null>(null);
 
   let pollInterval: number | null = null;
-  // null = 첫 tick (기준점 잡기, 콜백 호출 X). 이후엔 마지막 처리한 event_id.
+  // null = 첫 tick 아직 안 함
+  // ""   = 첫 tick에 이벤트 없었음 → 다음 이벤트는 바로 처리
+  // uuid = 마지막 처리한 event_id (같으면 재처리 안 함)
   let lastEventId: string | null = null;
 
   async function tick() {
     try {
       const { data } = await api.get<VoiceLatest>('/voice/latest');
       error.value = null;
-      if (!data.event_id || !data.text) return;
-      const isFirst = lastEventId === null;
+
+      if (!data.event_id || !data.text) {
+        if (lastEventId === null) lastEventId = ''; // 빈 상태로 초기화
+        return;
+      }
+
+      if (lastEventId === null) {
+        // 첫 tick에 이미 이벤트 있으면 기준점으로만 저장 (새로고침 시 재실행 방지)
+        lastEventId = data.event_id;
+        transcript.value = data.text;
+        return;
+      }
+
       if (data.event_id === lastEventId) return;
       lastEventId = data.event_id;
       transcript.value = data.text;
-      if (!isFirst) onFinal(data.text, data.event_id);
+      onFinal(data.text, data.event_id);
     } catch (e: any) {
       error.value = '백엔드 연결 끊김';
     }
