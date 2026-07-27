@@ -20,6 +20,7 @@ const { totalPrice, carNum, customerName } = storeToRefs(store);
 const activeTab = ref('추천');
 const menuCategories = ref<{ name: string; items: MenuItem[] }[]>([]);
 const lastMatch = ref<string | null>(null);
+let autoSubmitTimer: number | null = null;
 
 const fPrice = (p: number) => p.toLocaleString('ko-KR');
 const addMenu = (menu: MenuItem) => store.addItem(menu);
@@ -63,40 +64,42 @@ function isCheckoutRequest(text: string): boolean {
   );
 }
 
-// 음성만으로 주문 확정 → final 화면으로 이동(거기서 POST /orders 전송).
 function submitByVoice() {
-  if (!store.orderItems.length) {
-    lastMatch.value = '🛒 담긴 메뉴가 없어요. 메뉴를 먼저 말씀해 주세요.';
-    return;
-  }
-  if (!store.customerId) {
-    store.customerId = `GUEST-${Date.now()}`;
-  }
+  if (!store.orderItems.length) return;
+  if (!store.customerId) store.customerId = `GUEST-${Date.now()}`;
   lastMatch.value = '✅ 주문할게요! 잠시만요…';
   router.push('/final');
 }
 
-// 음성 인식 → 파싱·장바구니 반영은 store.parseVoiceOrder 가 담당.
+function scheduleAutoSubmit() {
+  if (autoSubmitTimer) clearTimeout(autoSubmitTimer);
+  autoSubmitTimer = window.setTimeout(() => {
+    autoSubmitTimer = null;
+    submitByVoice();
+  }, 2000);
+}
+
 const { supported, listening, transcript, error: voiceError } = useVoiceOrder(
   (text, eventId) => {
-    // 번호판 없는 사람 손님 모드: event_id를 임시 고객 ID로 사용
-    if (!store.customerId && eventId) {
-      store.customerId = eventId;
-    }
-    // 1) 카페인 없는 음료 추천 요청 → 추천 목록만 교체하고 끝.
+    if (!store.customerId && eventId) store.customerId = eventId;
+
     if (isDecafRequest(text)) {
       applyDecafRecommendation();
       return;
     }
-    // 2) 메뉴/수량 파싱(담기·빼기·비우기) — 제출 전에 먼저 담는다.
     const { added, removed, cleared } = store.parseVoiceOrder(text);
     const parts: string[] = [];
     if (cleared) parts.push('🗑 장바구니 비움');
     if (removed.length) parts.push(...removed.map((n) => `${n} 뺌`));
     if (added.length) parts.push(...added.map((a) => `${a.name} ×${a.qty}`));
-    if (parts.length) lastMatch.value = parts.join(', ');
-    // 3) 주문 확정 의도면 무터치로 제출 ("아메리카노 두 잔 주문할게요" → 담기+제출).
-    if (isCheckoutRequest(text)) submitByVoice();
+    if (parts.length) {
+      lastMatch.value = parts.join(', ');
+      scheduleAutoSubmit();
+    }
+    if (isCheckoutRequest(text)) {
+      if (autoSubmitTimer) clearTimeout(autoSubmitTimer);
+      submitByVoice();
+    }
   },
 );
 
@@ -186,6 +189,10 @@ onBeforeUnmount(() => {
   if (platePoll) {
     window.clearInterval(platePoll);
     platePoll = null;
+  }
+  if (autoSubmitTimer) {
+    clearTimeout(autoSubmitTimer);
+    autoSubmitTimer = null;
   }
 });
 </script>
